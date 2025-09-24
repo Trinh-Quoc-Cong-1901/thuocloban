@@ -1,10 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:thuoc_lo_ban_app/features/thuoc_lo_ban/bindings/thuoc_lo_ban_binding.dart';
 import 'package:thuoc_lo_ban_app/features/thuoc_lo_ban/views/thuoc_lo_ban_screen.dart';
 import 'package:thuoc_lo_ban_app/features/thuoc_lo_ban/views/guide_screen.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
+  // Setup Crashlytics để bắt tất cả lỗi Flutter
+  FlutterError.onError = (errorDetails) {
+    FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+  };
+  
+  // Gửi analytics event khi app khởi động
+  FirebaseAnalytics.instance.logEvent(name: 'app_opened');
+  
   runApp(const MyApp());
 }
 
@@ -19,6 +36,9 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
+      navigatorObservers: [
+        FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
+      ],
       initialRoute: '/thuoc-lo-ban',
       getPages: [
         GetPage(

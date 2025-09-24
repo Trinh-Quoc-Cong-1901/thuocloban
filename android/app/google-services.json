@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "429388539704",
+    "project_id": "thuoc-lo-ban-app",
+    "storage_bucket": "thuoc-lo-ban-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:429388539704:android:3762f8e6eb49ec52bc03cd",
+        "android_client_info": {
+          "package_name": "com.example.thuoc_lo_ban_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNQY1FhnINTSjWNnGCEDyIuuYeDTbJhPI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
