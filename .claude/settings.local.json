@@ -8,7 +8,13 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(git remote set-url:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(rm:*)",
+      "Bash(flutter clean:*)",
+      "Bash(pod deintegrate:*)",
+      "Bash(pod install:*)",
+      "Bash(flutter build:*)",
+      "Bash(flutter run:*)"
     ],
     "deny": []
   }

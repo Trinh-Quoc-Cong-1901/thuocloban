@@ -3,16 +3,31 @@ import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:thuoc_lo_ban_app/features/thuoc_lo_ban/bindings/thuoc_lo_ban_binding.dart';
 import 'package:thuoc_lo_ban_app/features/thuoc_lo_ban/views/thuoc_lo_ban_screen.dart';
 import 'package:thuoc_lo_ban_app/features/thuoc_lo_ban/views/guide_screen.dart';
+import 'package:thuoc_lo_ban_app/services/notification_service.dart';
 import 'firebase_options.dart';
+
+// Handler cho notifications khi app bị terminate
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  print('Background notification: ${message.messageId}');
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Setup background handler
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  
+  // Khởi tạo notification service
+  await NotificationService.initialize();
   
   // Setup Crashlytics để bắt tất cả lỗi Flutter
   FlutterError.onError = (errorDetails) {
