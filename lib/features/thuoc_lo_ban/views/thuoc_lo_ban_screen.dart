@@ -2,6 +2,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
 import '../../../config/assets_path.dart';
 import '../controllers/thuoc_lo_ban_controller.dart';
 import '../models/ruler_model.dart';
@@ -15,6 +18,7 @@ class ThuocLoBanScreen extends StatefulWidget {
 }
 
 class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _isDragging = false;
   double _lastKhoangPosition = -1; // Track khoang boundary crossings
   DateTime? _lastBoundaryHaptic; // Throttle boundary haptics
@@ -61,11 +65,233 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
   }
   
 
+  Widget _buildDrawer() {
+    return Drawer(
+      backgroundColor: const Color(0xFF030D4C),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: const Row(
+                children: [
+                  Icon(Icons.menu, color: Colors.white, size: 24),
+                  SizedBox(width: 12),
+                  Text(
+                    'MENU',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const Divider(color: Colors.white24),
+
+            // Menu items
+            ListTile(
+              leading: const Icon(Icons.help_outline, color: Colors.white),
+              title: const Text('Hướng dẫn', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                Get.toNamed('/thuoc-lo-ban/guide');
+              },
+            ),
+
+            ListTile(
+              leading: const Icon(Icons.share, color: Colors.white),
+              title: const Text('Chia sẻ ứng dụng', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _shareApp();
+              },
+            ),
+
+            ListTile(
+              leading: const Icon(Icons.star_rate, color: Colors.white),
+              title: const Text('Đánh giá ứng dụng', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _rateApp();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _shareApp() {
+    final String shareText = '''🏠 Thước Lỗ Ban - Ứng dụng phong thủy chính xác
+
+📏 Đo đạc chính xác với 3 loại thước:
+• Thông thủy (52.2 cm)
+• Dương trạch (42.9 cm)
+• Âm trạch (38.8 cm)
+
+✨ Tính năng nổi bật:
+• Giao diện trực quan, dễ sử dụng
+• Hỗ trợ đơn vị mm và inch
+• Kết quả chi tiết theo từng thước cung và khoảng
+
+📱 Tải ngay để có những quyết định phong thủy tốt nhất!
+
+#ThuocLoBan #FengShui #PhongThuy''';
+
+    // Tạo dialog phù hợp với màn hình ngang
+    _showLandscapeDialog(
+      title: 'Chia sẻ ứng dụng',
+      content: 'Bạn muốn chia sẻ ứng dụng Thước Lỗ Ban qua:',
+      actions: [
+        TextButton.icon(
+          onPressed: () {
+            Navigator.pop(context);
+            Share.share(shareText);
+          },
+          icon: const Icon(Icons.share, color: Colors.blue),
+          label: const Text('Chia sẻ', style: TextStyle(color: Colors.blue)),
+        ),
+        TextButton.icon(
+          onPressed: () {
+            Navigator.pop(context);
+            Clipboard.setData(ClipboardData(text: shareText));
+            Get.snackbar(
+              'Đã sao chép',
+              'Nội dung đã được sao chép vào clipboard',
+              backgroundColor: Colors.green,
+              colorText: Colors.white,
+              snackPosition: SnackPosition.BOTTOM,
+              margin: const EdgeInsets.all(8),
+              duration: const Duration(seconds: 2),
+            );
+          },
+          icon: const Icon(Icons.copy, color: Colors.orange),
+          label: const Text('Sao chép', style: TextStyle(color: Colors.orange)),
+        ),
+      ],
+    );
+  }
+
+  void _rateApp() {
+    _showLandscapeDialog(
+      title: 'Đánh giá ứng dụng',
+      content: 'Bạn có hài lòng với ứng dụng Thước Lỗ Ban?\nĐánh giá 5 sao để ủng hộ nhà phát triển nhé! ⭐',
+      actions: [
+        TextButton.icon(
+          onPressed: () {
+            Navigator.pop(context);
+            _launchAppStore();
+          },
+          icon: const Icon(Icons.star, color: Colors.orange),
+          label: const Text('Đánh giá 5⭐', style: TextStyle(color: Colors.orange)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Để sau', style: TextStyle(color: Colors.grey)),
+        ),
+      ],
+    );
+  }
+
+  void _showLandscapeDialog({
+    required String title,
+    required String content,
+    required List<Widget> actions,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 200),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF030D4C),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Text(
+                    content,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: actions.map((action) {
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: action,
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _launchAppStore() async {
+    String url;
+    if (Platform.isIOS) {
+      url = 'https://apps.apple.com/app/idYOUR_APP_ID'; // Replace with actual App Store ID
+    } else {
+      url = 'https://play.google.com/store/apps/details?id=YOUR_PACKAGE_NAME'; // Replace with actual package name
+    }
+
+    try {
+      final Uri uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        Get.snackbar(
+          'Lỗi',
+          'Không thể mở cửa hàng ứng dụng',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+          margin: const EdgeInsets.all(8),
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Lỗi',
+        'Không thể mở liên kết: $e',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(8),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: const Color(0xFF030D4C), // Figma design color
       resizeToAvoidBottomInset: false, // Prevent content from being pushed up when keyboard appears
+      drawer: _buildDrawer(),
       body: SafeArea(
         // Only apply SafeArea to top and sides, not bottom
         // This prevents UI from resizing when keyboard appears on iOS
@@ -94,10 +320,10 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
             bottom: 0,
             child: Row(
               children: [
-                // Back button
+                // Drawer button
                 IconButton(
-                  onPressed: () => Get.back(),
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                  icon: const Icon(Icons.menu, color: Colors.white),
                 ),
                 
                 // Title

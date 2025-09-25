@@ -530,22 +530,33 @@ class NotificationService {
     print('🔐 Badge: ${settings.badge}'); 
     print('🔐 Sound: ${settings.sound}');
     
-    // Check tokens
-    String? fcmToken = await _firebaseMessaging.getToken();
-    print('🎟️  FCM Token exists: ${fcmToken != null}');
-    if (fcmToken != null) {
-      print('🎟️  FCM Token: ${fcmToken.substring(0, 50)}...');
-    } else {
-      print('❌ FCM Token is NULL! This is a major issue!');
+    // Check tokens - only try if we have proper permissions
+    String? fcmToken;
+    try {
+      fcmToken = await _firebaseMessaging.getToken();
+      print('🎟️  FCM Token exists: ${fcmToken != null}');
+      if (fcmToken != null) {
+        print('🎟️  FCM Token: ${fcmToken.substring(0, 50)}...');
+      } else {
+        print('⚠️  FCM Token is NULL - may need Push Notifications capability');
+      }
+    } catch (e) {
+      print('⚠️  Cannot get FCM token: $e');
+      print('💡 This is normal if Push Notifications capability is disabled');
     }
     
     if (Platform.isIOS) {
-      String? apnsToken = await _firebaseMessaging.getAPNSToken();
-      print('🍎 APNS Token exists: ${apnsToken != null}');
-      if (apnsToken != null) {
-        print('🍎 APNS Token: ${apnsToken.substring(0, 20)}...');
-      } else {
-        print('❌ APNS Token is NULL! Check device/simulator!');
+      try {
+        String? apnsToken = await _firebaseMessaging.getAPNSToken();
+        print('🍎 APNS Token exists: ${apnsToken != null}');
+        if (apnsToken != null) {
+          print('🍎 APNS Token: ${apnsToken.substring(0, 20)}...');
+        } else {
+          print('⚠️  APNS Token is NULL - normal without Push Notifications capability');
+        }
+      } catch (e) {
+        print('⚠️  Cannot get APNS token: $e');
+        print('💡 This is normal if Push Notifications capability is disabled');
       }
     }
     
