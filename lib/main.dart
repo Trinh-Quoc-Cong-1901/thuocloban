@@ -22,22 +22,23 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  
+
   // Setup background handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  
-  // Khởi tạo notification service
-  await NotificationService.initialize();
-  
+
   // Setup Crashlytics để bắt tất cả lỗi Flutter
   FlutterError.onError = (errorDetails) {
     FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
   };
-  
+
   // Gửi analytics event khi app khởi động
   FirebaseAnalytics.instance.logEvent(name: 'app_opened');
-  
+
+  // Chạy app trước
   runApp(const MyApp());
+
+  // Khởi tạo notification service sau khi app đã hiển thị (không chặn UI)
+  NotificationService.initialize();
 }
 
 class MyApp extends StatelessWidget {
