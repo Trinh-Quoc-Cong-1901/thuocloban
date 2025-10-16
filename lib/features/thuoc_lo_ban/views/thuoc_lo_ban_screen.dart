@@ -142,37 +142,193 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
 
 #ThuocLoBan #FengShui #PhongThuy''';
 
-    // Tạo dialog phù hợp với màn hình ngang
-    _showLandscapeDialog(
-      title: 'Chia sẻ ứng dụng',
-      content: 'Bạn muốn chia sẻ ứng dụng Thước Lỗ Ban qua:',
-      actions: [
-        TextButton.icon(
-          onPressed: () {
-            Navigator.pop(context);
-            Share.share(shareText);
-          },
-          icon: const Icon(Icons.share, color: Colors.blue),
-          label: const Text('Chia sẻ', style: TextStyle(color: Colors.blue)),
+    _showShareDialog(shareText);
+  }
+
+  void _showShareDialog(String shareText) {
+    showDialog(
+      context: context,
+      builder: (context) => Center(
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 500, maxHeight: 320),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF030D4C), // Main navy
+                  Color(0xFF0A1B5C), // Lighter navy
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header with gradient accent
+                Container(
+                  height: 70,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFCD45), Color(0xFFFF8C45)],
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(24),
+                      topRight: Radius.circular(24),
+                    ),
+                  ),
+                  child: const Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.share_outlined,
+                          color: Color(0xFF030D4C),
+                          size: 28,
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Chia sẻ ứng dụng',
+                          style: TextStyle(
+                            color: Color(0xFF030D4C),
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Content
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Giúp bạn bè khám phá ứng dụng',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Chia sẻ Thước Lỗ Ban để cùng nhau\nra quyết định phong thủy tốt nhất',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Action buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildShareButton(
+                                icon: Icons.share,
+                                label: 'Chia sẻ',
+                                color: const Color(0xFF00E8E8),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Share.share(shareText);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildShareButton(
+                                icon: Icons.copy,
+                                label: 'Sao chép',
+                                color: const Color(0xFFFFCD45),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Clipboard.setData(ClipboardData(text: shareText));
+                                  Get.snackbar(
+                                    'Đã sao chép',
+                                    'Nội dung đã được sao chép vào clipboard',
+                                    backgroundColor: const Color(0xFF00E8E8),
+                                    colorText: const Color(0xFF030D4C),
+                                    snackPosition: SnackPosition.BOTTOM,
+                                    margin: const EdgeInsets.all(8),
+                                    duration: const Duration(seconds: 2),
+                                    borderRadius: 12,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        TextButton.icon(
-          onPressed: () {
-            Navigator.pop(context);
-            Clipboard.setData(ClipboardData(text: shareText));
-            Get.snackbar(
-              'Đã sao chép',
-              'Nội dung đã được sao chép vào clipboard',
-              backgroundColor: Colors.green,
-              colorText: Colors.white,
-              snackPosition: SnackPosition.BOTTOM,
-              margin: const EdgeInsets.all(8),
-              duration: const Duration(seconds: 2),
-            );
-          },
-          icon: const Icon(Icons.copy, color: Colors.orange),
-          label: const Text('Sao chép', style: TextStyle(color: Colors.orange)),
+      ),
+    );
+  }
+
+  Widget _buildShareButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          height: 40,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: color.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: color,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
 
@@ -311,116 +467,95 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
     return Container(
       height: 60,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Stack(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          // Left aligned content
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            child: Row(
-              children: [
-                // Drawer button
-                IconButton(
-                  onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                  icon: const Icon(Icons.menu, color: Colors.white),
-                ),
-                
-                // Title
-                const Text(
-                  'THƯỚC LỖ BAN',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+          // 1. Drawer button
+          IconButton(
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+            icon: const Icon(Icons.menu, color: Colors.white),
+          ),
+
+          // 2. Title
+          const Text(
+            'THƯỚC LỖ BAN',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          
-          // Center aligned input (flexible width)
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: Row(
+
+          // 3. Input field with unit label
+          GetBuilder<ThuocLoBanController>(
+            id: 'input-field',
+            builder: (controller) {
+              return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Input field
-                  GetBuilder<ThuocLoBanController>(
-                    id: 'input-field',
-                    builder: (controller) {
-                      return ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          minWidth: 60,
-                          maxWidth: 150,
-                        ),
-                        child: IntrinsicWidth(
-                          child: TextFormField(
-                            controller: controller.inputController,
-                            textAlign: TextAlign.center,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            inputFormatters: [
-                              // Allow both dot and comma for decimal input
-                              FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
-                              TextInputFormatter.withFunction((oldValue, newValue) {
-                                if (newValue.text.isEmpty) return newValue;
-                                
-                                // Replace comma with dot for parsing (iOS users may have comma on keyboard)
-                                final normalizedText = newValue.text.replaceAll(',', '.');
-                                
-                                // Validate it's a proper number
-                                final value = double.tryParse(normalizedText);
-                                if (value == null) return oldValue;
-                                
-                                // Limit based on unit
-                                final maxValue = controller.selectedUnit == Unit.mm ? 1000000.0 : 39370.0;
-                                if (value > maxValue) {
-                                  return oldValue; // Block input if exceeds limit
-                                }
-                                
-                                // Return normalized text with dot instead of comma
-                                return TextEditingValue(
-                                  text: normalizedText,
-                                  selection: newValue.selection,
-                                );
-                              }),
-                            ],
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.white,
-                              hintText: '0',
-                              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 18, fontWeight: FontWeight.bold),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide.none,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide.none,
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: const EdgeInsets.only(top: 4,bottom: 4,left: 4),
-                              isDense: true,
-                            ),
-                            onFieldSubmitted: (_) => controller.onInputSubmitted(),
-                            onTapOutside: (_) => controller.onInputUnfocused(),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minWidth: 60,
+                      maxWidth: 120,
+                    ),
+                    child: IntrinsicWidth(
+                      child: TextFormField(
+                        controller: controller.inputController,
+                        textAlign: TextAlign.center,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        inputFormatters: [
+                          // Allow both dot and comma for decimal input
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
+                          TextInputFormatter.withFunction((oldValue, newValue) {
+                            if (newValue.text.isEmpty) return newValue;
+
+                            // Replace comma with dot for parsing (iOS users may have comma on keyboard)
+                            final normalizedText = newValue.text.replaceAll(',', '.');
+
+                            // Validate it's a proper number
+                            final value = double.tryParse(normalizedText);
+                            if (value == null) return oldValue;
+
+                            // Limit based on unit
+                            final maxValue = controller.selectedUnit == Unit.mm ? 1000000.0 : 39370.0;
+                            if (value > maxValue) {
+                              return oldValue; // Block input if exceeds limit
+                            }
+
+                            // Return normalized text with dot instead of comma
+                            return TextEditingValue(
+                              text: normalizedText,
+                              selection: newValue.selection,
+                            );
+                          }),
+                        ],
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          hintText: '0',
+                          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16, fontWeight: FontWeight.bold),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
                           ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.only(top: 4,bottom: 4,left: 4),
+                          isDense: true,
                         ),
-                      );
-                    },
+                        onFieldSubmitted: (_) => controller.onInputSubmitted(),
+                        onTapOutside: (_) => controller.onInputUnfocused(),
+                      ),
+                    ),
                   ),
-                  
                   const SizedBox(width: 8),
-                  
-                  // Unit label
                   GetBuilder<ThuocLoBanController>(
                     id: 'unit-selector',
                     builder: (controller) {
@@ -428,50 +563,40 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
                     },
                   ),
                 ],
-              ),
-            ),
+              );
+            },
           ),
-          
-          // Right aligned content (fixed position from right edge)
-          Positioned(
-            right: 0,
-            top: 0,
-            bottom: 0,
+
+          // 4. mm radio button
+          GetBuilder<ThuocLoBanController>(
+            id: 'unit-selector',
+            builder: (controller) {
+              return _buildUnitRadio('mm', controller.selectedUnit == Unit.mm, controller);
+            },
+          ),
+
+          // 5. inch radio button
+          GetBuilder<ThuocLoBanController>(
+            id: 'unit-selector',
+            builder: (controller) {
+              return _buildUnitRadio('inch', controller.selectedUnit == Unit.inch, controller);
+            },
+          ),
+
+          // 6. Help button
+          GestureDetector(
+            onTap: () => Get.toNamed('/thuoc-lo-ban/guide'),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Unit selector - always at fixed position
-                GetBuilder<ThuocLoBanController>(
-                  id: 'unit-selector',
-                  builder: (controller) {
-                    return Row(
-                      children: [
-                        _buildUnitRadio('mm', controller.selectedUnit == Unit.mm, controller),
-                        const SizedBox(width: 8),
-                        _buildUnitRadio('inch', controller.selectedUnit == Unit.inch, controller),
-                      ],
-                    );
-                  },
+                Image.asset(
+                  IconsPath.guideIcon,
+                  width: 20,
+                  height: 20,
+                  color: Colors.white,
                 ),
-                
-                const SizedBox(width: 24),
-                
-                // Help button
-                GestureDetector(
-                  onTap: () => Get.toNamed('/thuoc-lo-ban/guide'),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Image.asset(
-                        IconsPath.guideIcon,
-                        width: 24,
-                        height: 24,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(width: 4),
-                      const Text('Hướng dẫn', style: TextStyle(color: Colors.white, fontSize: 14)),
-                    ],
-                  ),
-                ),
+                const SizedBox(width: 4),
+                const Text('Hướng dẫn', style: TextStyle(color: Colors.white, fontSize: 12)),
               ],
             ),
           ),
