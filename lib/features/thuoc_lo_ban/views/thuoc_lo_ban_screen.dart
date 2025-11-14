@@ -94,6 +94,16 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
 
             // Menu items
             ListTile(
+              leading: const Icon(Icons.psychology, color: Colors.white),
+              title: const Text('Hỏi Thiên Thước', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('Tư vấn phong thủy thông minh', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              onTap: () {
+                Navigator.pop(context);
+                Get.toNamed('/chat');
+              },
+            ),
+
+            ListTile(
               leading: const Icon(Icons.help_outline, color: Colors.white),
               title: const Text('Hướng dẫn', style: TextStyle(color: Colors.white)),
               onTap: () {
@@ -940,43 +950,93 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
       id: 'bottom-info', // Add specific ID for bottom info updates
       builder: (controller) {
         return Container(
-          height: 80,
-          padding: const EdgeInsets.only(left: 60, right: 12, top: 12, bottom: 12),
+          height: 65, // Reduced from 80 to 65
+          padding: const EdgeInsets.only(left: 60, right: 8, top: 8, bottom: 8), // Reduced padding
           color: const Color(0xFF030D4C), // Match scale background
-          child: Column(
-            children: controller.results.map((result) {
-              final color = _getRulerColor(result.ruler.type);
-              return Expanded(
-                child: Row(
-                  children: [
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: color,
+          child: Row(
+            children: [
+              // Results column
+              Expanded(
+                child: Column(
+                  children: controller.results.map((result) {
+                    final color = _getRulerColor(result.ruler.type);
+                    return Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 10, // Reduced from 12 to 10
+                            height: 10, // Reduced from 12 to 10
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: color,
+                            ),
+                          ),
+                          const SizedBox(width: 6), // Reduced from 8 to 6
+                          Expanded(
+                            child: Text(
+                              '${_getRulerName(result.ruler.type)}: Thước cung ${result.cung.name} - nằm trong khoảng ${result.khoang.name} - ${result.typeText}',
+                              style: TextStyle(
+                                color: result.khoang.isGood ? const Color(0xFFFF6560) : Colors.white, // #FF6560 for good, white for bad
+                                fontSize: 11, // Reduced from 12 to 11
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '${_getRulerName(result.ruler.type)}: Thước cung ${result.cung.name} - nằm trong khoảng ${result.khoang.name} - ${result.typeText}',
-                        style: TextStyle(
-                          color: result.khoang.isGood ? const Color(0xFFFF6560) : Colors.white, // #FF6560 for good, white for bad
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+                    );
+                  }).toList(),
                 ),
-              );
-            }).toList(),
+              ),
+
+              
+
+            ],
           ),
         );
       },
     );
+  }
+
+  void _consultAI(ThuocLoBanController controller) {
+    final measurement = controller.currentInput;
+    final results = controller.results;
+
+    if (results.isEmpty) {
+      Get.snackbar(
+        'Thông báo',
+        'Vui lòng nhập kích thước để được tư vấn',
+        backgroundColor: const Color(0xFF00E8E8),
+        colorText: const Color(0xFF030D4C),
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+      return;
+    }
+
+    // Build consultation message
+    String consultationMessage = 'Tôi vừa đo được kích thước ${measurement.toStringAsFixed(1)}mm. ';
+
+    // Add results details
+    for (int i = 0; i < results.length; i++) {
+      final result = results[i];
+      consultationMessage += '${_getRulerName(result.ruler.type)}: ';
+      consultationMessage += 'Thước cung ${result.cung.name}, ';
+      consultationMessage += 'khoảng ${result.khoang.name} (${result.khoang.isGood ? "Tốt" : "Xấu"}). ';
+    }
+
+    consultationMessage += 'Bạn có thể tư vấn chi tiết và cho lời khuyên phong thủy không?';
+
+    // Navigate to chat with context
+    Get.toNamed('/chat', arguments: {
+      'initialMessage': consultationMessage,
+      'autoSend': true,
+      'context': {
+        'measurement': measurement,
+        'meaningData': results,
+      },
+    });
   }
 
   Color _getRulerColor(RulerType type) {
