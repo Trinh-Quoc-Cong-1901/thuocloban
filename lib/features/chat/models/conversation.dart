@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+
 import 'chat_message.dart';
 
 class Conversation extends Equatable {
@@ -20,6 +21,40 @@ class Conversation extends Equatable {
     required this.updatedAt,
   });
 
+  factory Conversation.fromJson(Map<String, dynamic> json) {
+    return Conversation(
+      id: json['id'] ?? '',
+      title: json['title'] ?? 'New Conversation',
+      messages: (json['messages'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(ChatMessage.fromJson)
+              .toList() ??
+          [],
+      model: json['model'] ?? 'openai',
+      userId: json['userId'] ?? '',
+      createdAt:
+          json['createdAt'] != null
+              ? DateTime.parse(json['createdAt'])
+              : DateTime.now(),
+      updatedAt:
+          json['updatedAt'] != null
+              ? DateTime.parse(json['updatedAt'])
+              : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'messages': messages.map((msg) => msg.toJson()).toList(),
+      'model': model,
+      'userId': userId,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+  }
+
   Conversation copyWith({
     String? id,
     String? title,
@@ -40,32 +75,14 @@ class Conversation extends Equatable {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'title': title,
-      'messages': messages.map((msg) => msg.toJson()).toList(),
-      'model': model,
-      'userId': userId,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
-    };
-  }
-
-  static Conversation fromJson(Map<String, dynamic> json) {
-    return Conversation(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      messages: (json['messages'] as List)
-          .map((msg) => ChatMessage.fromJson(msg))
-          .toList(),
-      model: json['model'] as String,
-      userId: json['userId'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
-    );
-  }
-
   @override
-  List<Object?> get props => [id, title, messages, model, userId, createdAt, updatedAt];
+  List<Object?> get props => [
+    id,
+    title,
+    messages,
+    model,
+    userId,
+    createdAt,
+    updatedAt,
+  ];
 }

@@ -1,203 +1,566 @@
-import 'package:dio/dio.dart';
+import 'dart:math';
+
 import 'package:get/get.dart';
-import '../features/chat/models/suggested_question.dart';
+import 'package:thuoc_lo_ban_app/features/chat/models/chat_message.dart';
+import 'package:thuoc_lo_ban_app/features/chat/models/conversation.dart';
+import 'package:thuoc_lo_ban_app/features/chat/models/suggested_question.dart';
+import 'package:thuoc_lo_ban_app/services/providers/api_provider.dart';
+import 'package:thuoc_lo_ban_app/services/providers/database_provider.dart';
+import 'package:thuoc_lo_ban_app/services/providers/storage_provider.dart';
+import 'package:thuoc_lo_ban_app/utils/logger_utils.dart';
+import 'package:uuid/uuid.dart';
 
 class ChatService extends GetxService {
-  static ChatService get to => Get.find();
-
-  final Dio _dio = Dio();
-
-  // Observables
-  final RxList<SuggestedQuestion> suggestedQuestions = <SuggestedQuestion>[].obs;
+  @override
+  void onInit() {
+    super.onInit();
+    LoggerUtils.debug('ChatService initialized');
+    // Don't call init() here - it will be called asynchronously
+  }
 
   @override
-  Future<void> onInit() async {
-    super.onInit();
-    _loadSuggestedQuestions();
-    _setupDio();
+  void onReady() {
+    super.onReady();
+    LoggerUtils.debug('ChatService is ready');
   }
 
-  void _setupDio() {
-    _dio.options = BaseOptions(
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    );
-
-    // Add interceptors for logging (optional)
-    _dio.interceptors.add(LogInterceptor(
-      requestBody: true,
-      responseBody: true,
-      logPrint: (object) => print(object),
-    ));
-  }
-
-  void _loadSuggestedQuestions() {
-    suggestedQuestions.value = SuggestedQuestion.getDefaultQuestions();
-  }
-
-  Future<String?> sendSimpleMessage({
-    required String message,
-    Map<String, dynamic>? context,
+  // >>> START NEW METHOD - getAiCompletionForPrompt
+  /// Gửi một prompt đến AI và chỉ trả về nội dung phản hồi của AI.
+  /// Không lưu cuộc hội thoại này vào lịch sử chat chính thức.
+  Future<String> getAiCompletionForPrompt({
+    required String prompt,
+    String model = 'lao_dai', // Model mặc định
+    String tempUserId = 'prompt_only_user', // ID người dùng tạm thời
   }) async {
+    LoggerUtils.debug(
+      "ChatService: getAiCompletionForPrompt called with prompt: ${prompt.substring(0, min(50, prompt.length))}...",
+    );
     try {
-      // Prepare context-aware message
-      String contextualMessage = message;
-      if (context != null) {
-        contextualMessage = _addContextToMessage(message, context);
-      }
+      final Map<String, dynamic> data = {
+        'message': prompt,
+        'model': model,
+        'userId':
+            tempUserId, // Sử dụng một userId tạm thời, không nên trùng với userId thật
+        // 'conversationId': null, // Luôn tạo conversation mới cho mục đích này
+      };
 
-      // Send to AI and return response directly
-      return await _callAI(contextualMessage, 'simple_chat');
-    } catch (e) {
-      print('Error sending simple message: $e');
-      return null;
-    }
-  }
-
-  String _addContextToMessage(String message, Map<String, dynamic> context) {
-    String contextualMessage = message;
-
-    // Add measurement context if available
-    if (context.containsKey('measurement')) {
-      final measurement = context['measurement'];
-      final meaningData = context['meaningData'];
-
-      contextualMessage += """
-
---- Thông tin đo đạc hiện tại ---
-Kích thước: ${measurement}mm
-Kết quả thước Lô Ban: ${meaningData?.toString() ?? 'Không có thông tin'}
---- Hết thông tin ---
-
-Hãy giải thích chi tiết về kết quả này và đưa ra lời khuyên phong thủy phù hợp.""";
-    }
-
-    // Add current date context
-    final now = DateTime.now();
-    contextualMessage += """
-
---- Thông tin thời gian ---
-Thời gian hiện tại: ${now.day}/${now.month}/${now.year}
---- Hết thông tin ---""";
-
-    return contextualMessage;
-  }
-
-  Future<String?> _callAI(String message, String conversationId) async {
-    try {
-      // TODO: Replace with actual AI endpoint
-      // For now, return a mock response
-      await Future.delayed(const Duration(seconds: 2)); // Simulate network delay
-
-      return _getMockResponse(message);
-
-      /* When you have actual AI endpoint, use this:
-      final response = await _dio.post(
-        'YOUR_AI_ENDPOINT',
-        data: {
-          'message': message,
-          'model': 'thien_thuoc_ai',
-          'conversationId': conversationId,
-        },
-      );
+      final response = await _apiProvider.post('/api/chat', data: data);
 
       if (response.statusCode == 200) {
-        final data = response.data;
-        return data['response'] ?? data['content'];
+        final responseData = response.data;
+        if (responseData['success'] == true &&
+            responseData['responseObject'] != null) {
+          final conversation = Conversation.fromJson(
+            responseData['responseObject'],
+          );
+
+          // Lấy message cuối cùng từ assistant
+          if (conversation.messages.isNotEmpty) {
+            // >>> START MODIFICATION
+            ChatMessage? lastAssistantMessage;
+            for (int i = conversation.messages.length - 1; i >= 0; i--) {
+              if (conversation.messages[i].role == MessageRole.assistant &&
+                  !conversation.messages[i].isLoading) {
+                lastAssistantMessage = conversation.messages[i];
+                break;
+              }
+            }
+            // >>> END MODIFICATION
+            if (lastAssistantMessage != null) {
+              LoggerUtils.debug(
+                "ChatService: AI completion received successfully.",
+              );
+              return lastAssistantMessage.content;
+            }
+          }
+          LoggerUtils.warning(
+            "ChatService: AI response parsed, but no assistant message found.",
+          );
+          return "Linh Chiêm không có phản hồi cho yêu cầu này.";
+        } else {
+          LoggerUtils.error(
+            "ChatService: AI API call was not successful. Message: ${responseData['message']}",
+          );
+          return "Lỗi từ Linh Chiêm: ${responseData['message'] ?? 'Không rõ lỗi'}";
+        }
       }
-      */
+      LoggerUtils.error(
+        "ChatService: AI API call failed with status code ${response.statusCode}. Body: ${response.data}",
+      );
+      return "Lỗi kết nối đến Linh Chiêm (Code: ${response.statusCode}).";
     } catch (e) {
-      print('Error calling AI: $e');
-      return 'Xin lỗi, Thiên Thước gặp sự cố khi xử lý yêu cầu của bạn. Vui lòng thử lại sau.';
+      LoggerUtils.error(
+        'ChatService: Exception in getAiCompletionForPrompt',
+        e,
+      );
+      return "Đã xảy ra lỗi khi giao tiếp với Linh Chiêm: ${e.toString()}";
+    }
+  }
+  // >>> END NEW METHOD - getAiCompletionForPrompt
+
+  final ApiProvider _apiProvider = ApiProvider();
+  final DatabaseProvider _databaseProvider = DatabaseProvider();
+  final StorageProvider _storageProvider = StorageProvider();
+  final Uuid _uuid = const Uuid();
+  String? _cachedUserId;
+  Future<String>? _userIdFuture;
+  String? _cachedDeviceId;
+
+  // Box names for Hive database
+  static const String _conversationsBoxName = 'conversations';
+  static const String _suggestedQuestionsBoxName = 'suggested_questions';
+  static const String _deviceIdKey = 'chat_device_id';
+
+  // Version control for suggested questions
+  static const int _suggestedQuestionsVersion =
+      2; // Tăng số này khi muốn update questions
+
+  // Singleton pattern
+  static ChatService get to => Get.find<ChatService>();
+
+  Future<ChatService> init() async {
+    await _databaseProvider.openBox<String>(_conversationsBoxName);
+    await _databaseProvider.openBox<String>(_suggestedQuestionsBoxName);
+
+    // Check version and update suggested questions if needed
+    final storedVersion =
+        _databaseProvider.getValue<int>(
+          _suggestedQuestionsBoxName,
+          'version',
+        ) ??
+        0;
+    final hasQuestions =
+        _databaseProvider.getValue(_suggestedQuestionsBoxName, 'questions') !=
+        null;
+
+    if (!hasQuestions || storedVersion < _suggestedQuestionsVersion) {
+      await _initializeSuggestedQuestions();
+      await _databaseProvider.putValue<int>(
+        _suggestedQuestionsBoxName,
+        'version',
+        _suggestedQuestionsVersion,
+      );
+    }
+
+    return this;
+  }
+
+  // Initialize default suggested questions
+  Future<void> _initializeSuggestedQuestions() async {
+    final List<SuggestedQuestion> questions = [
+      SuggestedQuestion(
+        id: _uuid.v4(),
+        question: 'Thước Lô Ban là gì?',
+        category: QuestionCategory.tongQuat,
+      ),
+      SuggestedQuestion(
+        id: _uuid.v4(),
+        question: 'Cách sử dụng thước Lô Ban cho cửa chính?',
+        category: QuestionCategory.congCu,
+      ),
+      SuggestedQuestion(
+        id: _uuid.v4(),
+        question: 'Kích thước giường ngủ hợp phong thủy?',
+        category: QuestionCategory.phongThuy,
+      ),
+      SuggestedQuestion(
+        id: _uuid.v4(),
+        question: 'Xem giúp tôi kích thước 81cm',
+        category: QuestionCategory.congCu,
+      ),
+    ];
+
+    // Save to database
+    await _databaseProvider.putJsonList(
+      _suggestedQuestionsBoxName,
+      'questions',
+      questions.map((q) => q.toJson()).toList(),
+    );
+  }
+
+  QuestionCategory _categoryFromName(String categoryName) {
+    return QuestionCategory.values.firstWhere(
+      (category) => category.name == categoryName,
+      orElse: () => QuestionCategory.tongQuat,
+    );
+  }
+
+  // Get suggested questions
+  List<SuggestedQuestion> getSuggestedQuestions({String? category}) {
+    final jsonList = _databaseProvider.getJsonList(
+      _suggestedQuestionsBoxName,
+      'questions',
+    );
+    if (jsonList == null) return [];
+
+    final allQuestions =
+        jsonList.map((json) => SuggestedQuestion.fromJson(json)).toList();
+
+    if (category != null) {
+      return allQuestions.where((q) => q.category.name == category).toList();
+    }
+
+    return allQuestions;
+  }
+
+  // Get suggested questions by category
+  Map<String, List<SuggestedQuestion>> getSuggestedQuestionsByCategory() {
+    final allQuestions = getSuggestedQuestions();
+    final Map<String, List<SuggestedQuestion>> categorizedQuestions = {};
+
+    for (final question in allQuestions) {
+      final categoryKey = question.category.name;
+      categorizedQuestions.putIfAbsent(categoryKey, () => []);
+      categorizedQuestions[categoryKey]!.add(question);
+    }
+
+    return categorizedQuestions;
+  }
+
+  // Add a custom suggested question
+  Future<void> addSuggestedQuestion(String question, String category) async {
+    final newQuestion = SuggestedQuestion(
+      id: _uuid.v4(),
+      question: question,
+      category: _categoryFromName(category),
+    );
+
+    final existingList = getSuggestedQuestions();
+    existingList.add(newQuestion);
+
+    await _databaseProvider.putJsonList(
+      _suggestedQuestionsBoxName,
+      'questions',
+      existingList.map((q) => q.toJson()).toList(),
+    );
+  }
+
+  // Get all conversations for a user
+  List<Conversation> getAllConversations(String userId) {
+    final jsonList = _databaseProvider.getJsonList(
+      _conversationsBoxName,
+      userId,
+    );
+    if (jsonList == null) return [];
+
+    final conversations =
+        jsonList.map((json) => Conversation.fromJson(json)).toList();
+
+    // Sort conversations by updatedAt in descending order (newest first)
+    conversations.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+
+    return conversations;
+  }
+
+  // Get a specific conversation
+  Conversation? getConversation(String userId, String conversationId) {
+    final conversations = getAllConversations(userId);
+    return conversations.firstWhereOrNull((conv) => conv.id == conversationId);
+  }
+
+  // Save a conversation
+  Future<void> saveConversation(
+    String userId,
+    Conversation conversation,
+  ) async {
+    final List<Conversation> conversations = getAllConversations(userId);
+
+    // Check if conversation already exists
+    final index = conversations.indexWhere(
+      (conv) => conv.id == conversation.id,
+    );
+    if (index >= 0) {
+      // Update existing conversation
+      conversations[index] = conversation;
+    } else {
+      // Add new conversation
+      conversations.add(conversation);
+    }
+
+    await _databaseProvider.putJsonList(
+      _conversationsBoxName,
+      userId,
+      conversations.map((conv) => conv.toJson()).toList(),
+    );
+  }
+
+  // Delete a conversation
+  Future<void> deleteConversation(String userId, String conversationId) async {
+    final List<Conversation> conversations = getAllConversations(userId);
+    conversations.removeWhere((conv) => conv.id == conversationId);
+
+    await _databaseProvider.putJsonList(
+      _conversationsBoxName,
+      userId,
+      conversations.map((conv) => conv.toJson()).toList(),
+    );
+  }
+
+  // Clear all conversations for a user
+  Future<void> clearAllConversations(String userId) async {
+    await _databaseProvider.deleteValue(_conversationsBoxName, userId);
+  }
+
+  /// Ensure there's a registered user on the API side and cache its ID.
+  Future<String> getOrCreateUserId() async {
+    if (_cachedUserId != null && _cachedUserId!.isNotEmpty) {
+      return _cachedUserId!;
+    }
+
+    final storedUserId = _storageProvider.getUserId();
+    if (storedUserId != null && storedUserId.isNotEmpty) {
+      _cachedUserId = storedUserId;
+      return storedUserId;
+    }
+
+    if (_userIdFuture != null) {
+      return _userIdFuture!;
+    }
+
+    _userIdFuture = _ensureUserId();
+    try {
+      return await _userIdFuture!;
+    } finally {
+      _userIdFuture = null;
     }
   }
 
-  String _getMockResponse(String message) {
-    // Mock responses for different types of questions
-    final lowerMessage = message.toLowerCase();
-
-    if (lowerMessage.contains('thước lô ban') || lowerMessage.contains('thước lỗ ban')) {
-      return '''**Thước Lô Ban** (thước Lỗ Ban) là một công cụ đo lường truyền thống trong phong thủy Trung Quốc, được sử dụng để xác định các kích thước hợp phong thủy cho kiến trúc và nội thất.
-
-**Các loại thước:**
-• **Thông thủy (52.2cm)**: Dùng cho cửa chính, cửa sổ
-• **Dương trạch (42.9cm)**: Dùng cho nhà ở, không gian sống
-• **Âm trạch (38.8cm)**: Dùng cho mộ phần, không gian tâm linh
-
-**8 vạch chính:**
-• **Tài** (길): Tài lộc, thịnh vượng
-• **Bệnh** (病): Bệnh tật, không tốt
-• **Ly** (離): Xa lìa, chia cắt
-• **Nghĩa** (義): Đạo nghĩa, công lý
-• **Quan** (官): Quan lộc, thăng tiến
-• **Kiếp** (劫): Tai họa, mất mát
-• **Hại** (害): Tổn hại, nguy hiểm
-• **Cát** (吉): May mắn, thuận lợi
-
-Trong đó **Tài, Nghĩa, Quan, Cát** là các vạch tốt, còn lại là vạch xấu.''';
+  Future<String> _ensureUserId() async {
+    final deviceId = await _ensureDeviceId();
+    final existingUserId = await _getUserIdByDeviceId(deviceId);
+    if (existingUserId != null && existingUserId.isNotEmpty) {
+      return existingUserId;
     }
-
-    if (lowerMessage.contains('cửa') || lowerMessage.contains('cửa chính')) {
-      return '''**Kích thước cửa chính hợp phong thủy:**
-
-**Chiều rộng cửa:**
-• 81-87cm: Vạch Tài - Tài lộc thịnh vượng
-• 108-114cm: Vạch Nghĩa - Gia đình hòa thuận
-• 135-141cm: Vạch Quan - Thăng tiến trong sự nghiệp
-• 162-168cm: Vạch Cát - May mắn, bình an
-
-**Chiều cao cửa:**
-• 195-201cm: Kích thước lý tưởng cho cửa chính
-• 208-214cm: Phù hợp cho nhà có trần cao
-
-**Lưu ý:**
-- Cửa chính không nên quá nhỏ (dưới 70cm) hoặc quá lớn (trên 180cm)
-- Tỷ lệ chiều rộng:chiều cao nên là 1:2.3 đến 1:2.5
-- Cửa nên mở vào trong để thu hút tài khí''';
-    }
-
-    if (lowerMessage.contains('giường') || lowerMessage.contains('giường ngủ')) {
-      return '''**Kích thước giường ngủ theo thước Lô Ban:**
-
-**Giường đôi (1.8m):**
-• Chiều rộng: 180cm (vạch Cát)
-• Chiều dài: 200cm hoặc 210cm (vạch Tài)
-
-**Giường đơn:**
-• 120cm x 200cm (phù hợp cho trẻ em)
-• 150cm x 200cm (giường đơn lớn)
-
-**Chiều cao giường:**
-• 45-50cm từ sàn đến mặt nệm
-• Không quá thấp (dưới 40cm) hoặc quá cao (trên 60cm)
-
-**Nguyên tắc:**
-- Giường phải có đầu giường dựa vào tường vững chắc
-- Không đặt giường trực diện cửa ra vào
-- Kích thước phải thuộc các vạch tốt: Tài, Nghĩa, Quan, Cát''';
-    }
-
-    // Default response
-    return '''Thiên Thước rất vui được hỗ trợ bạn!
-
-Tôi có thể giúp bạn:
-• Giải thích về thước Lô Ban và cách sử dụng
-• Tư vấn kích thước hợp phong thủy cho cửa, giường, bàn, tủ
-• Hướng dẫn đo đạc và ý nghĩa các vạch thước
-• Lời khuyên phong thủy cho kiến trúc và nội thất
-
-Bạn có thể hỏi cụ thể về kích thước nào đó hoặc cần tư vấn về một vật dụng particular nào không?''';
+    return await _createGuestUser(deviceId);
   }
 
+  Future<String> _ensureDeviceId() async {
+    if (_cachedDeviceId != null && _cachedDeviceId!.isNotEmpty) {
+      return _cachedDeviceId!;
+    }
 
-  List<SuggestedQuestion> getSuggestedQuestionsByCategory(QuestionCategory category) {
-    return suggestedQuestions
-        .where((question) => question.category == category)
-        .toList();
+    final storedDeviceId = _storageProvider.read(_deviceIdKey);
+    if (storedDeviceId != null && storedDeviceId.isNotEmpty) {
+      _cachedDeviceId = storedDeviceId;
+      return storedDeviceId;
+    }
+
+    final newDeviceId = _uuid.v4();
+    final saved = await _storageProvider.write(_deviceIdKey, newDeviceId);
+    if (!saved) {
+      LoggerUtils.warning(
+        'ChatService: Failed to persist generated device ID for chat user.',
+      );
+    }
+    _cachedDeviceId = newDeviceId;
+    return newDeviceId;
   }
 
+  Future<void> _storeUserId(String userId) async {
+    _cachedUserId = userId;
+    final saved = await _storageProvider.setUserId(userId);
+    if (!saved) {
+      LoggerUtils.warning(
+        'ChatService: Failed to persist the chat user ID: $userId',
+      );
+    }
+  }
+
+  Future<String?> _getUserIdByDeviceId(String deviceId) async {
+    try {
+      final response = await _apiProvider.get('/users/device/$deviceId');
+      if (response.statusCode == 200 &&
+          response.data != null &&
+          response.data['success'] == true) {
+        final responseObject = response.data['responseObject'];
+        if (responseObject is Map<String, dynamic>) {
+          final String? id = responseObject['id'];
+          if (id != null && id.isNotEmpty) {
+            await _storeUserId(id);
+            return id;
+          }
+        }
+      }
+    } catch (e, stackTrace) {
+      LoggerUtils.error(
+        'ChatService: Failed to lookup user by device ID: $deviceId',
+        e,
+        stackTrace,
+      );
+    }
+    return null;
+  }
+
+  Future<String> _createGuestUser(String deviceId) async {
+    final payload = {
+      'name': 'Thiên Thước',
+      'birthDate': '1990-01-01',
+      'birthDateLunar': false,
+      'gender': 'male',
+      'deviceId': deviceId,
+    };
+
+    final response = await _apiProvider.post('/users', data: payload);
+    if ((response.statusCode == 201 || response.statusCode == 200) &&
+        response.data != null &&
+        response.data['success'] == true) {
+      final responseObject = response.data['responseObject'];
+      if (responseObject is Map<String, dynamic>) {
+        final String? id = responseObject['id'];
+        if (id != null && id.isNotEmpty) {
+          await _storeUserId(id);
+          return id;
+        }
+      }
+    }
+
+    final errorMessage =
+        response.data?['message'] ??
+        'Unknown error while creating chat participant';
+    LoggerUtils.error('ChatService: Failed to create chat user: $errorMessage');
+    throw Exception('Failed to create chat user: $errorMessage');
+  }
+
+  // Get available AI models
+  Future<List<Map<String, dynamic>>> getAvailableModels() async {
+    try {
+      final response = await _apiProvider.get('/api/models');
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data['success'] == true && data['responseObject'] != null) {
+          final responseList = data['responseObject'] as List;
+          return responseList
+              .map((item) => item as Map<String, dynamic>)
+              .toList();
+        }
+      }
+
+      return [];
+    } catch (e) {
+      LoggerUtils.error('[ChatService] Failed to get available models', e);
+      // Default models if API fails
+      return [
+        {'id': 'openai', 'name': 'gpt-3.5-turbo', 'maxContextLength': 4096},
+        {'id': 'gemini', 'name': 'gemini-2.0-flash', 'maxContextLength': 30000},
+      ];
+    }
+  }
+
+  // Send a message to the AI
+  Future<Conversation> sendMessage({
+    required String userId,
+    required String message,
+    required String model,
+    String? conversationId,
+  }) async {
+    try {
+      final Map<String, dynamic> data = {
+        'message': message,
+        'model': model,
+        'userId': userId,
+      };
+
+      if (conversationId != null) {
+        data['conversationId'] = conversationId;
+      }
+
+      final response = await _apiProvider.post('/api/chat', data: data);
+
+      if (response.statusCode == 200) {
+        final responseData = response.data;
+        if (responseData['success'] == true &&
+            responseData['responseObject'] != null) {
+          final conversation = Conversation.fromJson(
+            responseData['responseObject'],
+          );
+
+          // Save to local database
+          await saveConversation(userId, conversation);
+
+          return conversation;
+        } else {
+          final errorMessage = responseData['message'] ?? 'API error';
+          LoggerUtils.error('API returned error: $errorMessage');
+          throw Exception('API Error: $errorMessage');
+        }
+      } else {
+        LoggerUtils.error('HTTP Error: ${response.statusCode}');
+        throw Exception('HTTP Error: ${response.statusCode}');
+      }
+    } catch (e) {
+      LoggerUtils.error('[ChatService] Failed to send message', e);
+
+      // Re-throw the error to be handled by the UI layer
+      rethrow;
+    }
+  }
+
+  // Helper to create a local conversation with error message
+  Future<Conversation> _createLocalErrorConversation(
+    String userId,
+    String message,
+    String model,
+    String? conversationId,
+  ) async {
+    final now = DateTime.now();
+    final String newConvId = conversationId ?? _uuid.v4();
+
+    // Get the existing conversation if it exists
+    Conversation? existingConversation;
+    if (conversationId != null) {
+      existingConversation = getConversation(userId, conversationId);
+    }
+
+    final List<ChatMessage> messages =
+        existingConversation?.messages.toList() ?? [];
+
+    // Add user message if it doesn't already exist
+    if (!messages.any(
+      (msg) => msg.content == message && msg.role == MessageRole.user,
+    )) {
+      messages.add(
+        ChatMessage(
+          id: _uuid.v4(),
+          content: message,
+          role: MessageRole.user,
+          timestamp: now,
+        ),
+      );
+    }
+
+    // Add assistant error message
+    messages.add(
+      ChatMessage(
+        id: _uuid.v4(),
+        content: 'Đã xảy ra lỗi kết nối. Vui lòng kiểm tra mạng và thử lại.',
+        role: MessageRole.assistant,
+        timestamp: now.add(const Duration(seconds: 1)),
+      ),
+    );
+
+    final conversation = Conversation(
+      id: newConvId,
+      title: _generateTitle(message),
+      messages: messages,
+      model: model,
+      userId: userId,
+      createdAt: existingConversation?.createdAt ?? now,
+      updatedAt: now,
+    );
+
+    // Save the conversation to local database
+    await saveConversation(userId, conversation);
+
+    return conversation;
+  }
+
+  // Generate a title for a new conversation
+  String _generateTitle(String message) {
+    // Use the first 5 words of the message or fewer if the message is shorter
+    final words = message.split(' ');
+    if (words.length <= 5) {
+      return message;
+    }
+    return '${words.take(5).join(' ')}...';
+  }
 }

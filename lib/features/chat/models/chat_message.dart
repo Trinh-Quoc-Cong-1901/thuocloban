@@ -47,15 +47,35 @@ class ChatMessage extends Equatable {
   }
 
   static ChatMessage fromJson(Map<String, dynamic> json) {
+    final idValue = json['id'];
+    final contentValue = json['content'];
+    final roleValue = json['role'];
+    final timestampValue = json['timestamp'];
+
+    final timestamp = () {
+      if (timestampValue is String) {
+        return DateTime.tryParse(timestampValue) ?? DateTime.now();
+      }
+      if (timestampValue is int) {
+        return DateTime.fromMillisecondsSinceEpoch(timestampValue);
+      }
+      if (timestampValue is double) {
+        return DateTime.fromMillisecondsSinceEpoch(timestampValue.toInt());
+      }
+      return DateTime.now();
+    }();
+
+    final roleString = roleValue?.toString();
+
     return ChatMessage(
-      id: json['id'] as String,
-      content: json['content'] as String,
+      id: idValue?.toString() ?? '',
+      content: contentValue?.toString() ?? '',
       role: MessageRole.values.firstWhere(
-        (role) => role.name == json['role'],
+        (role) => role.name == roleString,
         orElse: () => MessageRole.user,
       ),
-      timestamp: DateTime.parse(json['timestamp'] as String),
-      isLoading: json['isLoading'] as bool? ?? false,
+      timestamp: timestamp,
+      isLoading: json['isLoading'] == true,
     );
   }
 

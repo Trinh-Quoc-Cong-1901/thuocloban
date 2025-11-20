@@ -7,7 +7,7 @@ class ThinkingAnimation extends StatefulWidget {
   const ThinkingAnimation({
     super.key,
     this.text = 'Thiên Thước đang suy nghĩ...',
-    this.color = Colors.white,
+    this.color = Colors.black,
   });
 
   @override
@@ -69,68 +69,47 @@ class _ThinkingAnimationState extends State<ThinkingAnimation>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // AI Icon
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFFFFCD45),
-            ),
-            child: const Icon(
-              Icons.psychology,
-              color: Color(0xFF030D4C),
-              size: 20,
+          Text(
+            widget.text,
+            style: TextStyle(
+              color: widget.color,
+              fontSize: 14,
+              fontStyle: FontStyle.italic,
             ),
           ),
 
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
 
-          // Thinking text and dots
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.text,
-                style: TextStyle(
-                  color: widget.color,
-                  fontSize: 14,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-
-              const SizedBox(height: 4),
-
-              // Animated dots
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(3, (index) {
-                  return AnimatedBuilder(
-                    animation: _dotAnimations[index],
-                    builder: (context, child) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                        child: Opacity(
-                          opacity: _dotAnimations[index].value,
-                          child: Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: widget.color,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                }),
-              ),
-            ],
-          ),
+          _buildDots(),
         ],
       ),
+    );
+  }
+
+  Widget _buildDots() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (index) {
+        return AnimatedBuilder(
+          animation: _dotAnimations[index],
+          builder: (context, child) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Opacity(
+                opacity: _dotAnimations[index].value,
+                child: Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: widget.color,
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      }),
     );
   }
 }

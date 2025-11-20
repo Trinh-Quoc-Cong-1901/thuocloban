@@ -6,6 +6,7 @@ enum QuestionCategory {
   doLuong,      // Đo lường
   kienTruc,     // Kiến trúc
   noiThat,      // Nội thất
+  congCu,       // Công cụ
   tongQuat,     // Tổng quát
 }
 

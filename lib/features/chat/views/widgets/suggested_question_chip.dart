@@ -90,6 +90,8 @@ class SuggestedQuestionChip extends StatelessWidget {
         return Icons.home;
       case QuestionCategory.noiThat:
         return Icons.weekend;
+      case QuestionCategory.congCu:
+        return Icons.construction;
       case QuestionCategory.tongQuat:
         return Icons.help_outline;
     }

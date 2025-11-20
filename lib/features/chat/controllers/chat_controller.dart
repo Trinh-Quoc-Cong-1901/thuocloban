@@ -1,207 +1,416 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:uuid/uuid.dart';
+
+import 'package:thuoc_lo_ban_app/services/chat_service.dart';
+import 'package:thuoc_lo_ban_app/utils/logger_utils.dart';
 import '../models/chat_message.dart';
+import '../models/conversation.dart';
 import '../models/suggested_question.dart';
-import '../../../services/chat_service.dart';
 
 class ChatController extends GetxController {
-  // Services
-  ChatService get _chatService => ChatService.to;
+  ChatService get _chatService => Get.find<ChatService>();
 
   // Controllers
   final TextEditingController messageController = TextEditingController();
   final ScrollController scrollController = ScrollController();
+  final FocusNode messageFocusNode = FocusNode();
 
-  // Observables
-  final RxBool isLoading = false.obs;
-  final RxBool isInitialized = false.obs;
-  final RxList<ChatMessage> currentMessages = <ChatMessage>[].obs;
+  final Rx<String?> _pendingContextInfo = Rx<String?>(null);
 
-  // UI state
-  final RxBool showSuggestions = true.obs;
-  final RxBool keyboardVisible = false.obs;
-  final RxString messageText = ''.obs;
+  final Uuid _uuid = const Uuid();
+
+  // State
+  final Rx<bool> isLoading = false.obs;
+  final Rx<bool> isTyping = false.obs;
+  final RxList<ChatMessage> messages = <ChatMessage>[].obs;
+  final RxList<SuggestedQuestion> suggestedQuestions =
+      <SuggestedQuestion>[].obs;
+  final Rx<String?> currentConversationId = Rx<String?>(null);
+  final Rx<String> selectedModel = 'openai'.obs;
+
+  // Thêm biến observable để lưu trữ danh sách conversation
+  final RxList<Conversation> conversationHistory = <Conversation>[].obs;
+
+  final RxList<Map<String, dynamic>> availableModels =
+      <Map<String, dynamic>>[].obs;
+
+  // For tracking loading state when sending a message
+  final Rx<ChatMessage?> loadingMessage = Rx<ChatMessage?>(null);
+
+  // Track if we have initialMessage to control autofocus
+  final Rx<bool> hasInitialMessage = false.obs;
+
+  // Listen to message controller text changes
+  final Rx<String> messageText = ''.obs;
+
+  Future<String> _resolveUserId() => _chatService.getOrCreateUserId();
+
+  String get userName => 'Người dùng';
 
   @override
   void onInit() {
     super.onInit();
-    print('🎯 ChatController onInit called');
+
+    // Wait for ChatService to be ready before loading data
+    _initializeWithChatService();
+
     // Listen to text changes
-    messageController.addListener(_onTextChanged);
-    _initialize();
+    messageController.addListener(() {
+      messageText.value = messageController.text;
+    });
+
+    if (Get.arguments != null && Get.arguments is Map) {
+      final Map args = Get.arguments as Map;
+      if (args['initialMessage'] != null &&
+          args['context'] != null &&
+          args['autoSend'] == true) {
+        String initialMessage = args['initialMessage'] as String;
+        
+        // Convert context to a string format to be sent
+        final contextData = args['context'] as Map<String, dynamic>;
+        String contextInfo = """
+
+--- Thông tin đo đạc hiện tại ---
+Kích thước: ${contextData['measurement']}mm
+Kết quả thước Lô Ban: ${contextData['meaningData']?.toString() ?? 'Không có thông tin'}
+--- Hết thông tin ---
+
+Hãy giải thích chi tiết về kết quả này và đưa ra lời khuyên phong thủy phù hợp.""" ;
+
+        hasInitialMessage.value = true;
+
+        _pendingContextInfo.value = contextInfo;
+
+        Future.delayed(const Duration(milliseconds: 100), () {
+          sendMessage(text: initialMessage);
+        });
+        messageController.text = '';
+      } else if (args['initialMessage'] != null) {
+        String prompt = args['initialMessage'] as String;
+        hasInitialMessage.value = true; 
+
+        if (args['autoSend'] == true) {
+          Future.delayed(const Duration(milliseconds: 100), () {
+            sendMessage(text: prompt);
+          });
+        } else {
+          messageController.text = prompt;
+          Future.delayed(const Duration(milliseconds: 100), () {
+            messageFocusNode.requestFocus();
+          });
+        }
+      }
+    }
   }
 
-  void _onTextChanged() {
-    messageText.value = messageController.text;
+  Future<void> _initializeWithChatService() async {
+    try {
+      Get.find<ChatService>();
+      _loadAvailableModels();
+      _loadSuggestedQuestions();
+      await _loadConversationHistory();
+    } catch (e) {
+      LoggerUtils.debug('ChatService not ready yet, retrying...');
+      await Future.delayed(const Duration(milliseconds: 500));
+      await _initializeWithChatService();
+    }
   }
 
   @override
   void onClose() {
     messageController.dispose();
     scrollController.dispose();
+    messageFocusNode.dispose();
     super.onClose();
   }
 
-  Future<void> _initialize() async {
+  Future<void> _loadConversationHistory() async {
     try {
-      print('🎯 ChatController initializing...');
-
-      // Debug: Check ChatService state
-      _debugChatServiceState();
-
-      // Check if we have initial arguments
-      final args = Get.arguments as Map<String, dynamic>?;
-
-      if (args != null) {
-        await _handleInitialArguments(args);
-      } else {
-        _loadSuggestedQuestions();
-      }
-
-      isInitialized.value = true;
-      print('🎯 ChatController initialized successfully');
+      final userId = await _resolveUserId();
+      final conversations = _chatService.getAllConversations(userId);
+      conversationHistory.value = conversations;
     } catch (e) {
-      print('❌ Error initializing ChatController: $e');
-      isInitialized.value = true;
+      LoggerUtils.error('Error loading conversation history', e);
     }
   }
 
-  void _debugChatServiceState() {
+  Future<void> _loadAvailableModels() async {
     try {
-      final chatService = _chatService;
-      print('🔍 ChatService state check:');
-      print('  - Suggested questions: ${chatService.suggestedQuestions.length}');
-    } catch (e) {
-      print('❌ Error checking ChatService state: $e');
-    }
-  }
-
-  Future<void> _handleInitialArguments(Map<String, dynamic> args) async {
-    final String? initialMessage = args['initialMessage'];
-    final bool autoSend = args['autoSend'] ?? false;
-    final Map<String, dynamic>? context = args['context'];
-
-    if (initialMessage != null) {
-      messageController.text = initialMessage;
-      messageText.value = initialMessage;
-      showSuggestions.value = false;
-
-      if (autoSend) {
-        await sendMessage(context: context);
+      final models = await _chatService.getAvailableModels();
+      availableModels.assignAll(models);
+      if (models.isNotEmpty) {
+        selectedModel.value = models.first['id'].toString();
       }
+    } catch (e) {
+      LoggerUtils.error('Failed to load available models', e);
     }
   }
 
   void _loadSuggestedQuestions() {
-    showSuggestions.value = true;
+    final allQuestions = _chatService.getSuggestedQuestions();
+    if (allQuestions.isEmpty) {
+      suggestedQuestions.clear();
+      return;
+    }
+    suggestedQuestions.assignAll(allQuestions.take(6));
   }
 
-  Future<void> sendMessage({Map<String, dynamic>? context}) async {
-    final message = messageController.text.trim();
-    if (message.isEmpty || isLoading.value) return;
+  Future<void> sendMessage({String? text}) async {
+    final messageFromInput = text ?? messageController.text.trim();
+    if (messageFromInput.isEmpty) return;
 
-    try {
-      isLoading.value = true;
-      showSuggestions.value = false;
+    if (text == null) {
+      messageController.clear();
+    }
 
-      // Add user message to current chat
+    if (!_isThuocLoBanRelated(messageFromInput)) {
       final userMessage = ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        content: message,
+        id: _uuid.v4(),
+        content: messageFromInput,
         role: MessageRole.user,
         timestamp: DateTime.now(),
       );
-      currentMessages.add(userMessage);
-
-      // Clear input
-      messageController.clear();
-      messageText.value = '';
-      _scrollToBottom();
-
-      // Send message to AI service and get response
-      final response = await _chatService.sendSimpleMessage(
-        message: message,
-        context: context,
+      final nonRelatedResponse = ChatMessage(
+        id: _uuid.v4(),
+        content:
+            'Xin lỗi, tôi chỉ có thể trả lời các câu hỏi liên quan đến Thước Lô Ban và phong thủy. Vui lòng đặt câu hỏi về chủ đề này nhé!',
+        role: MessageRole.assistant,
+        timestamp: DateTime.now().add(const Duration(milliseconds: 500)),
       );
 
-      if (response != null) {
-        // Add AI response
-        final aiMessage = ChatMessage(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          content: response,
-          role: MessageRole.assistant,
-          timestamp: DateTime.now(),
+      messages.addAll([userMessage, nonRelatedResponse]);
+      isLoading.value = false;
+      isTyping.value = false;
+      Future.delayed(const Duration(milliseconds: 300), _scrollToBottom);
+      return;
+    }
+
+    try {
+      isLoading.value = true;
+      String messageToSendToAI = messageFromInput;
+
+      final now = DateTime.now();
+      final dateTimeContext =
+          "\n\n--- Thông tin thời gian hiện tại ---" 
+          "Ngày giờ: ${now.day}/${now.month}/${now.year} ${now.hour}:${now.minute.toString().padLeft(2, '0')}"
+          "--- Hết thông tin thời gian ---";
+
+      messageToSendToAI = "$messageToSendToAI$dateTimeContext";
+
+      if (_pendingContextInfo.value != null) {
+        messageToSendToAI = "$messageToSendToAI\n\n${_pendingContextInfo.value}";
+        _pendingContextInfo.value = null;
+      }
+
+      final userMessage = ChatMessage(
+        id: _uuid.v4(),
+        content: messageFromInput,
+        role: MessageRole.user,
+        timestamp: DateTime.now(),
+      );
+
+      final loadingResponseMessage = ChatMessage(
+        id: _uuid.v4(),
+        content: '',
+        role: MessageRole.assistant,
+        timestamp: DateTime.now().add(const Duration(milliseconds: 500)),
+        isLoading: true,
+      );
+
+      messages.add(userMessage);
+      messages.add(loadingResponseMessage);
+
+      loadingMessage.value = loadingResponseMessage;
+
+      messageFocusNode.unfocus();
+      Future.delayed(const Duration(milliseconds: 450), _scrollToBottom);
+
+      isTyping.value = true;
+
+      try {
+        final userId = await _resolveUserId();
+        final conversation = await _chatService.sendMessage(
+          userId: userId,
+          message: messageToSendToAI,
+          model: selectedModel.value,
+          conversationId: currentConversationId.value,
         );
-        currentMessages.add(aiMessage);
-        _scrollToBottom();
-      } else {
-        Get.snackbar(
-          'Lỗi',
-          'Không thể gửi tin nhắn. Vui lòng thử lại.',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-          margin: const EdgeInsets.all(16),
+
+        currentConversationId.value = conversation.id;
+        
+        final cleanedMessages = _cleanMessagesForDisplay(
+          conversation.messages,
+          latestUserInput: messageFromInput,
         );
+        messages.assignAll(cleanedMessages);
+
+        await _loadConversationHistory();
+        _loadSuggestedQuestions();
+      } catch (e) {
+        LoggerUtils.error('Error sending message', e);
+        final updatedMessages = messages.where((msg) => !msg.isLoading).toList();
+        updatedMessages.add(
+          ChatMessage(
+            id: _uuid.v4(),
+            content: 'Đã xảy ra lỗi khi gửi tin nhắn: ${e.toString()}',
+            role: MessageRole.assistant,
+            timestamp: DateTime.now(),
+          ),
+        );
+        messages.assignAll(updatedMessages);
+      } finally {
+        loadingMessage.value = null;
+        isLoading.value = false;
+        isTyping.value = false;
+        Future.delayed(const Duration(milliseconds: 300), _scrollToBottom);
       }
     } catch (e) {
-      print('Error sending message: $e');
-      Get.snackbar(
-        'Lỗi',
-        'Đã xảy ra lỗi khi gửi tin nhắn',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(16),
+      LoggerUtils.error('Unexpected error in sendMessage', e);
+      loadingMessage.value = null;
+      isLoading.value = false;
+      isTyping.value = false;
+      final updatedMessages = messages.where((msg) => !msg.isLoading).toList();
+      updatedMessages.add(
+        ChatMessage(
+          id: _uuid.v4(),
+          content: 'Đã xảy ra lỗi không mong muốn: ${e.toString()}',
+          role: MessageRole.assistant,
+          timestamp: DateTime.now(),
+        ),
       );
+      messages.assignAll(updatedMessages);
+    }
+  }
+
+  void useSuggestedQuestion(String question) {
+    sendMessage(text: question);
+  }
+
+  Future<void> loadConversation(String conversationId) async {
+    try {
+      isLoading.value = true;
+      final userId = await _resolveUserId();
+      final conversation = _chatService.getConversation(userId, conversationId);
+      if (conversation != null) {
+        currentConversationId.value = conversationId;
+        final cleanedMessages =
+            _cleanMessagesForDisplay(conversation.messages);
+        messages.assignAll(cleanedMessages);
+        hasInitialMessage.value = false;
+        _loadSuggestedQuestions();
+        Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+      }
+    } catch (e) {
+      LoggerUtils.error('Error loading conversation', e);
     } finally {
       isLoading.value = false;
     }
   }
+  
+  List<ChatMessage> _cleanMessagesForDisplay(
+    List<ChatMessage> apiMessages, {
+    String? latestUserInput,
+  }) {
+    final lastUserIndex = apiMessages.lastIndexWhere(
+      (msg) => msg.role == MessageRole.user,
+    );
 
+    return apiMessages.asMap().entries.map((entry) {
+      final index = entry.key;
+      final msg = entry.value;
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (scrollController.hasClients) {
-        scrollController.animateTo(
-          scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+      if (msg.role != MessageRole.user) {
+        return msg;
       }
-    });
+
+      final hasTimeBlock = _hasTimeContext(msg.content);
+      final cleanedContent = _stripTimeContext(msg.content);
+
+      if (latestUserInput != null &&
+          latestUserInput.isNotEmpty &&
+          index == lastUserIndex &&
+          hasTimeBlock) {
+        return msg.copyWith(content: latestUserInput);
+      }
+
+      return msg.copyWith(content: cleanedContent);
+    }).toList();
   }
 
-  void onSuggestedQuestionTap(SuggestedQuestion question) {
-    messageController.text = question.question;
-    messageText.value = question.question;
-    showSuggestions.value = false;
-    sendMessage();
+  String _stripTimeContext(String content) {
+    final startMarker = '--- Thông tin thời gian hiện tại ---';
+    final endMarker = '--- Hết thông tin thời gian ---';
+    final startIndex = content.indexOf(startMarker);
+
+    if (startIndex == -1) {
+      return content.trim();
+    }
+
+    final endIndex = content.indexOf(endMarker, startIndex);
+    final cutIndex =
+        endIndex == -1 ? content.length : endIndex + endMarker.length;
+    final replaced = content.replaceRange(startIndex, cutIndex, '');
+    return replaced.trim();
+  }
+
+  bool _hasTimeContext(String content) {
+    return content.contains('--- Thông tin thời gian hiện tại ---') &&
+        content.contains('--- Hết thông tin thời gian ---');
   }
 
   void startNewConversation() {
-    currentMessages.clear();
-    showSuggestions.value = true;
-    messageController.clear();
-    messageText.value = '';
+    currentConversationId.value = null;
+    messages.clear();
+    _pendingContextInfo.value = null;
+    hasInitialMessage.value = false;
+    _loadSuggestedQuestions();
   }
 
-
-  void onKeyboardVisibilityChanged(bool visible) {
-    keyboardVisible.value = visible;
-    if (visible) {
-      _scrollToBottom();
+  Future<void> deleteConversation(String conversationId) async {
+    try {
+      final userId = await _resolveUserId();
+      await _chatService.deleteConversation(userId, conversationId);
+      final index = conversationHistory.indexWhere((conv) => conv.id == conversationId);
+      if (index >= 0) {
+        conversationHistory.removeAt(index);
+      }
+      if (conversationId == currentConversationId.value) {
+        startNewConversation();
+      }
+    } catch (e) {
+      LoggerUtils.error('Error deleting conversation', e);
     }
   }
 
-  // Get suggested questions from chat service
-  List<SuggestedQuestion> get suggestedQuestions => _chatService.suggestedQuestions;
-
-  // Get conversation title
-  String get conversationTitle {
-    return 'Trò chuyện cùng Thiên Thước';
+  Future<void> clearAllConversations() async {
+    try {
+      final userId = await _resolveUserId();
+      await _chatService.clearAllConversations(userId);
+      startNewConversation();
+      conversationHistory.clear();
+    } catch (e) {
+      LoggerUtils.error('Error clearing all conversations', e);
+    }
   }
 
-  // Check if we can send message
-  bool get canSendMessage => !isLoading.value && messageText.value.trim().isNotEmpty;
+  List<Conversation> getConversationHistory() {
+    return conversationHistory;
+  }
+
+  void _scrollToBottom() {
+    if (scrollController.hasClients) {
+      scrollController.animateTo(
+        scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  bool _isThuocLoBanRelated(String message) {
+    // For thuocloban, we can assume most questions are related.
+    // This can be expanded with more sophisticated keyword checking if needed.
+    return true;
+  }
 }

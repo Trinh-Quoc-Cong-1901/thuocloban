@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -22,6 +23,7 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
   bool _isDragging = false;
   double _lastKhoangPosition = -1; // Track khoang boundary crossings
   DateTime? _lastBoundaryHaptic; // Throttle boundary haptics
+  double get _labelWidth => 100.w; // Keep title column width consistent
   
   // Cache expensive calculations
   double _cachedScreenWidth = 0;
@@ -40,7 +42,7 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
   
   void _updateCachedDimensions() {
     _cachedScreenWidth = MediaQuery.of(context).size.width;
-    _cachedRulerAreaWidth = _cachedScreenWidth - 100;
+    _cachedRulerAreaWidth = _cachedScreenWidth - _labelWidth;
     _cachedPixelsPerMm = _cachedRulerAreaWidth / 100;
   }
   
@@ -73,16 +75,16 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
           children: [
             // Header
             Container(
-              padding: const EdgeInsets.all(16),
-              child: const Row(
+              padding: EdgeInsets.all(12.r),
+              child: Row(
                 children: [
-                  Icon(Icons.menu, color: Colors.white, size: 24),
-                  SizedBox(width: 12),
+                  Icon(Icons.menu, color: Colors.white, size: 12.sp),
+                  SizedBox(width: 12.w),
                   Text(
                     'MENU',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 10.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -94,18 +96,17 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
 
             // Menu items
             ListTile(
-              leading: const Icon(Icons.psychology, color: Colors.white),
-              title: const Text('Hỏi Thiên Thước', style: TextStyle(color: Colors.white)),
-              subtitle: const Text('Tư vấn phong thủy thông minh', style: TextStyle(color: Colors.white70, fontSize: 12)),
-              onTap: () {
-                Navigator.pop(context);
-                Get.toNamed('/chat');
-              },
-            ),
+              leading: Icon(Icons.psychology, color: Colors.white, size: 12.sp),
+              title: Text('Hỏi Thiên Thước', style: TextStyle(color: Colors.white, fontSize: 8.sp)),
+            onTap: () {
+              Navigator.pop(context);
+              _openChat();
+            },
+          ),
 
             ListTile(
-              leading: const Icon(Icons.help_outline, color: Colors.white),
-              title: const Text('Hướng dẫn', style: TextStyle(color: Colors.white)),
+              leading: Icon(Icons.help_outline, color: Colors.white, size: 12.sp),
+              title: Text('Hướng dẫn', style: TextStyle(color: Colors.white, fontSize: 8.sp)),
               onTap: () {
                 Navigator.pop(context);
                 Get.toNamed('/thuoc-lo-ban/guide');
@@ -113,8 +114,8 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
             ),
 
             ListTile(
-              leading: const Icon(Icons.share, color: Colors.white),
-              title: const Text('Chia sẻ ứng dụng', style: TextStyle(color: Colors.white)),
+              leading: Icon(Icons.share, color: Colors.white, size: 12.sp),
+              title: Text('Chia sẻ ứng dụng', style: TextStyle(color: Colors.white, fontSize: 8.sp)),
               onTap: () {
                 Navigator.pop(context);
                 _shareApp();
@@ -122,8 +123,8 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
             ),
 
             ListTile(
-              leading: const Icon(Icons.star_rate, color: Colors.white),
-              title: const Text('Đánh giá ứng dụng', style: TextStyle(color: Colors.white)),
+              leading: Icon(Icons.star_rate, color: Colors.white, size: 12.sp),
+              title: Text('Đánh giá ứng dụng', style: TextStyle(color: Colors.white, fontSize: 8.sp)),
               onTap: () {
                 Navigator.pop(context);
                 _rateApp();
@@ -162,7 +163,7 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
         child: Dialog(
           backgroundColor: Colors.transparent,
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 500, maxHeight: 320),
+            constraints: BoxConstraints(maxWidth: 500.w, maxHeight: 320.h),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
@@ -172,12 +173,12 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
                   Color(0xFF0A1B5C), // Lighter navy
                 ],
               ),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(24.r),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 20,
-                  offset: const Offset(0, 10),
+                  offset: Offset(0, 10.h),
                 ),
               ],
             ),
@@ -186,31 +187,31 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
               children: [
                 // Header with gradient accent
                 Container(
-                  height: 70,
+                  height: 60.h,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFFFFCD45), Color(0xFFFF8C45)],
                     ),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(24),
-                      topRight: Radius.circular(24),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(24.r),
+                      topRight: Radius.circular(24.r),
                     ),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           Icons.share_outlined,
-                          color: Color(0xFF030D4C),
-                          size: 28,
+                          color: const Color(0xFF030D4C),
+                          size: 12.sp,
                         ),
-                        SizedBox(width: 12),
+                        SizedBox(width: 12.w),
                         Text(
                           'Chia sẻ ứng dụng',
                           style: TextStyle(
-                            color: Color(0xFF030D4C),
-                            fontSize: 20,
+                            color: const Color(0xFF030D4C),
+                            fontSize: 10.sp,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -222,30 +223,29 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
                 // Content
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(24.r),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
+                        Text(
                           'Giúp bạn bè khám phá ứng dụng',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: 10.sp,
                             fontWeight: FontWeight.w600,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8.h),
                         Text(
                           'Chia sẻ Thước Lỗ Ban để cùng nhau\nra quyết định phong thủy tốt nhất',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.8),
-                            fontSize: 14,
-                            height: 1.4,
+                            fontSize: 8.sp,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 24),
+                        SizedBox(height: 24.h),
 
                         // Action buttons
                         Row(
@@ -261,7 +261,7 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
                                 },
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12.w),
                             Expanded(
                               child: _buildShareButton(
                                 icon: Icons.copy,
@@ -276,9 +276,9 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
                                     backgroundColor: const Color(0xFF00E8E8),
                                     colorText: const Color(0xFF030D4C),
                                     snackPosition: SnackPosition.BOTTOM,
-                                    margin: const EdgeInsets.all(8),
+                                    margin: EdgeInsets.all(8.r),
                                     duration: const Duration(seconds: 2),
-                                    borderRadius: 12,
+                                    borderRadius: 12.r,
                                   );
                                 },
                               ),
@@ -307,15 +307,15 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         child: Container(
-          height: 40,
+          height: 50.h,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16.r),
             border: Border.all(
               color: color.withValues(alpha: 0.3),
-              width: 1,
+              width: 1.w,
             ),
           ),
           child: Row(
@@ -324,14 +324,14 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
               Icon(
                 icon,
                 color: color,
-                size: 20,
+                size: 10.sp,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8.w),
               Text(
                 label,
                 style: TextStyle(
                   color: color,
-                  fontSize: 14,
+                  fontSize: 8.sp,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -371,36 +371,35 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 200),
-          padding: const EdgeInsets.all(20),
+          constraints: BoxConstraints(maxWidth: 400.w, maxHeight: 200.h),
+          padding: EdgeInsets.all(20.r),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 18,
+                style: TextStyle(
+                  fontSize: 10.sp,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF030D4C),
+                  color: const Color(0xFF030D4C),
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 8.h),
               Expanded(
                 child: SingleChildScrollView(
                   child: Text(
                     content,
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: TextStyle(
+                      fontSize: 6.sp,
                       color: Colors.black87,
-                      height: 1.4,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 6.h),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: actions.map((action) {
@@ -475,8 +474,8 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
 
   Widget _buildTopBar() {
     return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      height: 50.h,
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -487,14 +486,15 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
           ),
 
           // 2. Title
-          const Text(
+          Text(
             'THƯỚC LỖ BAN',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 18,
+              fontSize: 6.sp,
               fontWeight: FontWeight.w700,
             ),
           ),
+          SizedBox(width: 2.w),
 
           // 3. Input field with unit label
           GetBuilder<ThuocLoBanController>(
@@ -504,16 +504,16 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      minWidth: 60,
-                      maxWidth: 120,
+                    constraints: BoxConstraints(
+                      minWidth: 40.w,
+                      maxWidth: 130.w,
                     ),
                     child: IntrinsicWidth(
                       child: TextFormField(
                         controller: controller.inputController,
                         textAlign: TextAlign.center,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 6.sp, fontWeight: FontWeight.bold),
                         inputFormatters: [
                           // Allow both dot and comma for decimal input
                           FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d*')),
@@ -544,7 +544,7 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
                           filled: true,
                           fillColor: Colors.white,
                           hintText: '0',
-                          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16, fontWeight: FontWeight.bold),
+                          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 6.sp, fontWeight: FontWeight.bold),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide.none,
@@ -565,11 +565,11 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 2.w),
                   GetBuilder<ThuocLoBanController>(
                     id: 'unit-selector',
                     builder: (controller) {
-                      return Text(controller.unitLabel, style: const TextStyle(color: Colors.white, fontSize: 14));
+                      return Text(controller.unitLabel, style: TextStyle(color: Colors.white, fontSize: 6.sp));
                     },
                   ),
                 ],
@@ -601,12 +601,11 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
               children: [
                 Image.asset(
                   IconsPath.guideIcon,
-                  width: 20,
-                  height: 20,
+                  width: 12.w,
+                  height: 12.h,
                   color: Colors.white,
                 ),
-                const SizedBox(width: 4),
-                const Text('Hướng dẫn', style: TextStyle(color: Colors.white, fontSize: 12)),
+                Text('Hướng dẫn', style: TextStyle(color: Colors.white, fontSize: 6.sp)),
               ],
             ),
           ),
@@ -628,23 +627,23 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
       behavior: HitTestBehavior.opaque,
       child: Container(
         // Minimum 44x44 hit area for better UX
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 0.w, vertical: 8.h),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 20,  // Increased from 16
-              height: 20, // Increased from 16
+              width: 12.w,  // Reduced from 14 to 10 for landscape
+              height: 12.h, // Reduced from 14 to 10 for landscape
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 1.5),
+                border: Border.all(color: Colors.white, width: 0.5.w),
                 color: Colors.transparent, // Always transparent background
               ),
               child: isSelected 
                   ? Center(
                       child: Container(
-                        width: 10,  // Increased from 8
-                        height: 10, // Increased from 8
+                        width: 6.w,  // Reduced from 10 to 6 for landscape
+                        height: 6.h, // Reduced from 10 to 6 for landscape
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.white, // White dot on transparent background
@@ -653,8 +652,7 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
                     )
                   : null,
             ),
-            const SizedBox(width: 8), // Increased from 6
-            Text(unit, style: const TextStyle(color: Colors.white, fontSize: 15)), // Slightly larger
+            Text(unit, style: TextStyle(color: Colors.white, fontSize: 6.sp)), // Slightly larger
           ],
         ),
       ),
@@ -778,7 +776,7 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
 
   Widget _buildRulerScale(ThuocLoBanController controller) {
     return Container(
-      height: 40,
+      height: 45.h,
       decoration: const BoxDecoration(
         color: Color(0xFF030D4C), // Main background color
         border: Border(
@@ -793,10 +791,12 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
             child: RepaintBoundary(
               key: const ValueKey('ruler-scale'),
               child: CustomPaint(
-                size: const Size(double.infinity, 40),
+                size: Size(double.infinity, 40.h),
                 painter: RulerScalePainter(
-                  currentMm: controller.currentInput, 
+                  currentMm: controller.currentInput,
                   selectedUnit: controller.selectedUnit,
+                  fontSize: 4.sp,
+                  labelWidth: _labelWidth,
                 ),
               ),
             ),
@@ -807,21 +807,21 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
             left: 0,
             top: 0,
             bottom: 0,
-            width: 100,
+            width: _labelWidth,
             child: Container(
               color: const Color(0xFF030D4C),
               child: Align(
                 alignment: Alignment.center,
                 child: Container(
-                  width: controller.selectedUnit == Unit.mm ? 30 : 40,
-                  height: 20,
+                  width: controller.selectedUnit == Unit.mm ? 30.w : 40.w,
+                  height: 20.h,
                   color: Colors.transparent,
                   child: Center(
                     child: Text(
                       controller.selectedUnit == Unit.mm ? 'cm' : 'inch',
-                      style: const TextStyle(
-                        color: Colors.white, 
-                        fontSize: 18,  // Increased to 18 as requested
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 6.sp,  // Reduced from 12 to 8 for landscape
                         fontWeight: FontWeight.bold  // Bold as requested
                       ),
                     ),
@@ -845,7 +845,7 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
   }) {
     return Expanded(
       child: Container(
-        margin: hasBottomMargin ? const EdgeInsets.only(bottom: 5) : EdgeInsets.zero, // Conditional margin
+        margin: hasBottomMargin ? EdgeInsets.only(bottom: 2.h) : EdgeInsets.zero, // Reduced margin for landscape
         decoration: const BoxDecoration(
           border: Border(
             top: BorderSide(color: Colors.white, width: 1), // White border top
@@ -856,7 +856,7 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
           children: [
             // Title section
             Container(
-              width: 100,
+              width: 100.w,
               color: color,
               child: Center(
                 child: Column(
@@ -865,18 +865,18 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
                     Text(
                       title,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.black,
-                        fontSize: 13,
+                        fontSize: 6.sp, // Reduced from 8 to 6 for landscape
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(
                       size,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.black,
-                        fontSize: 13,
+                        fontSize: 5.sp, // Reduced from 7 to 5 for landscape
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -897,6 +897,9 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
                       painter: RulerStripPainter(
                         ruler: controller.rulers[rulerType]!,
                         currentMm: controller.currentInput,
+                        khoangFontSize: 6.sp,
+                        cungFontSize: 5.sp,
+                        labelWidth: _labelWidth,
                       ),
                     ),
                   ),
@@ -950,8 +953,8 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
       id: 'bottom-info', // Add specific ID for bottom info updates
       builder: (controller) {
         return Container(
-          height: 65, // Reduced from 80 to 65
-          padding: const EdgeInsets.only(left: 60, right: 8, top: 8, bottom: 8), // Reduced padding
+          height: 80.h, // Increased back to 65 to show all 3 lines
+          padding: EdgeInsets.only(left: 60.w, right: 8.w, top: 4.h, bottom: 4.h), // Reduced padding
           color: const Color(0xFF030D4C), // Match scale background
           child: Row(
             children: [
@@ -964,20 +967,20 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
                       child: Row(
                         children: [
                           Container(
-                            width: 10, // Reduced from 12 to 10
-                            height: 10, // Reduced from 12 to 10
+                            width: 6.w, // Reduced from 10 to 6 for landscape
+                            height: 6.h, // Reduced from 10 to 6 for landscape
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: color,
                             ),
                           ),
-                          const SizedBox(width: 6), // Reduced from 8 to 6
+                          SizedBox(width: 4.w), // Reduced from 6 to 4 for landscape
                           Expanded(
                             child: Text(
                               '${_getRulerName(result.ruler.type)}: Thước cung ${result.cung.name} - nằm trong khoảng ${result.khoang.name} - ${result.typeText}',
                               style: TextStyle(
                                 color: result.khoang.isGood ? const Color(0xFFFF6560) : Colors.white, // #FF6560 for good, white for bad
-                                fontSize: 11, // Reduced from 12 to 11
+                                fontSize: 6.sp, // Increased from 6 to 8 for better readability
                                 fontWeight: FontWeight.w500,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -997,46 +1000,6 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
         );
       },
     );
-  }
-
-  void _consultAI(ThuocLoBanController controller) {
-    final measurement = controller.currentInput;
-    final results = controller.results;
-
-    if (results.isEmpty) {
-      Get.snackbar(
-        'Thông báo',
-        'Vui lòng nhập kích thước để được tư vấn',
-        backgroundColor: const Color(0xFF00E8E8),
-        colorText: const Color(0xFF030D4C),
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(16),
-      );
-      return;
-    }
-
-    // Build consultation message
-    String consultationMessage = 'Tôi vừa đo được kích thước ${measurement.toStringAsFixed(1)}mm. ';
-
-    // Add results details
-    for (int i = 0; i < results.length; i++) {
-      final result = results[i];
-      consultationMessage += '${_getRulerName(result.ruler.type)}: ';
-      consultationMessage += 'Thước cung ${result.cung.name}, ';
-      consultationMessage += 'khoảng ${result.khoang.name} (${result.khoang.isGood ? "Tốt" : "Xấu"}). ';
-    }
-
-    consultationMessage += 'Bạn có thể tư vấn chi tiết và cho lời khuyên phong thủy không?';
-
-    // Navigate to chat with context
-    Get.toNamed('/chat', arguments: {
-      'initialMessage': consultationMessage,
-      'autoSend': true,
-      'context': {
-        'measurement': measurement,
-        'meaningData': results,
-      },
-    });
   }
 
   Color _getRulerColor(RulerType type) {
@@ -1095,8 +1058,15 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
 class RulerScalePainter extends CustomPainter {
   final double currentMm;
   final Unit selectedUnit;
-  
-  RulerScalePainter({required this.currentMm, required this.selectedUnit});
+  final double fontSize;
+  final double labelWidth;
+
+  RulerScalePainter({
+    required this.currentMm,
+    required this.selectedUnit,
+    this.fontSize = 10.0,
+    required this.labelWidth,
+  });
   
   @override
   void paint(Canvas canvas, Size size) {
@@ -1104,7 +1074,7 @@ class RulerScalePainter extends CustomPainter {
       ..color = Colors.white
       ..strokeWidth = 1;
 
-    final rulerAreaWidth = size.width - 100;
+    final rulerAreaWidth = size.width - labelWidth;
     final pixelsPerMm = rulerAreaWidth / 100;
     final screenCenter = size.width / 2;
     final fixedPosition = screenCenter;
@@ -1129,7 +1099,7 @@ class RulerScalePainter extends CustomPainter {
         final textPainter = TextPainter(
           text: TextSpan(
             text: cmValue.toStringAsFixed(cmValue % 1 == 0 ? 0 : 1),
-            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white, fontSize: fontSize, fontWeight: FontWeight.bold),
           ),
           textDirection: TextDirection.ltr,
         );
@@ -1175,7 +1145,7 @@ class RulerScalePainter extends CustomPainter {
         
         if (isWhole) {
           final textPainter = TextPainter(
-            text: TextSpan(text: inch.toInt().toString(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+            text: TextSpan(text: inch.toInt().toString(), style: TextStyle(color: Colors.white, fontSize: fontSize, fontWeight: FontWeight.bold)),
             textDirection: TextDirection.ltr,
           );
           textPainter.layout();
@@ -1189,35 +1159,46 @@ class RulerScalePainter extends CustomPainter {
   bool shouldRepaint(RulerScalePainter oldDelegate) {
     const threshold = 0.1;
     return (oldDelegate.currentMm - currentMm).abs() > threshold || 
-           oldDelegate.selectedUnit != selectedUnit;
+           oldDelegate.selectedUnit != selectedUnit ||
+           oldDelegate.labelWidth != labelWidth;
   }
 }
 
 class RulerStripPainter extends CustomPainter {
   final RulerModel ruler;
   final double currentMm;
+  final double khoangFontSize;
+  final double cungFontSize;
+  final double labelWidth;
 
-  RulerStripPainter({required this.ruler, required this.currentMm});
+  RulerStripPainter({
+    required this.ruler,
+    required this.currentMm,
+    this.khoangFontSize = 12.0,
+    this.cungFontSize = 10.0,
+    required this.labelWidth,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final pixelsPerMm = size.width / 100;
     final cycleLengthMm = ruler.totalLengthMm;
-    final screenWidth = size.width + 100;
+    final screenWidth = size.width + labelWidth;
     final screenCenter = screenWidth / 2;
-    final fixedOffsetPx = screenCenter - 100;
+    final fixedOffsetPx = screenCenter - labelWidth;
     final visibleRangeMm = size.width / pixelsPerMm;
     final halfRange = visibleRangeMm / 2;
-    final startMm = math.max(0.0, currentMm - halfRange); // FIXED: Include left side
+    final startMm = math.max(0.0, currentMm - halfRange); // Start from 0, not before 0
     final endMm = currentMm + halfRange; // FIXED: Symmetric range around center
     
-    // Calculate cycle range for both sides
-    final startCycle = (startMm / cycleLengthMm).floor();
+    // Calculate cycle range - ensure cycle 0 is included when currentMm is near 0
+    final startCycle = math.min(0, (startMm / cycleLengthMm).floor());
     final endCycle = (endMm / cycleLengthMm).ceil() + 1;
     
     for (int cycle = startCycle; cycle <= endCycle; cycle++) {
       final cycleStartMm = cycle * cycleLengthMm;
-      if (cycleStartMm + cycleLengthMm <= 0) continue;
+      // Always draw cycle 0, skip only truly negative cycles
+      if (cycle < 0 && cycleStartMm + cycleLengthMm <= 0) continue;
       
       final cycleStartX = fixedOffsetPx + (cycleStartMm - currentMm) * pixelsPerMm;
       _drawCycle(canvas, size, cycleStartX, pixelsPerMm);
@@ -1226,7 +1207,8 @@ class RulerStripPainter extends CustomPainter {
     // OPTIMIZED: Draw boundaries separately for better performance
     for (int cycle = startCycle; cycle <= endCycle; cycle++) {
       final cycleStartMm = cycle * cycleLengthMm;
-      if (cycleStartMm + cycleLengthMm <= 0) continue;
+      // Always draw cycle 0, skip only truly negative cycles
+      if (cycle < 0 && cycleStartMm + cycleLengthMm <= 0) continue;
       
       final cycleStartX = fixedOffsetPx + (cycleStartMm - currentMm) * pixelsPerMm;
       _drawMajorBoundaries(canvas, size, cycleStartX, pixelsPerMm);
@@ -1267,7 +1249,7 @@ class RulerStripPainter extends CustomPainter {
     final khoangTextPainter = TextPainter(
       text: TextSpan(
         text: khoang.name.toUpperCase(),
-        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
+        style: TextStyle(color: Colors.white, fontSize: khoangFontSize, fontWeight: FontWeight.w800),
       ),
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.center,
@@ -1301,7 +1283,7 @@ class RulerStripPainter extends CustomPainter {
           final textPainter = TextPainter(
             text: TextSpan(
               text: cung.name,
-              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+              style: TextStyle(color: Colors.white, fontSize: cungFontSize, fontWeight: FontWeight.w600),
             ),
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.center,
@@ -1353,6 +1335,14 @@ class RulerStripPainter extends CustomPainter {
   bool shouldRepaint(RulerStripPainter oldDelegate) {
     const threshold = 0.1;
     return (oldDelegate.currentMm - currentMm).abs() > threshold || 
-           oldDelegate.ruler != ruler;
+           oldDelegate.ruler != ruler ||
+           oldDelegate.labelWidth != labelWidth;
   }
 }
+  Future<void> _openChat({Map<String, dynamic>? arguments}) async {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    await Get.toNamed('/chat', arguments: arguments);
+  }

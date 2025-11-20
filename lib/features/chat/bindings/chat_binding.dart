@@ -8,7 +8,9 @@ class ChatBinding extends Bindings {
     // ChatService is already initialized globally in main.dart
     // Just ensure it's accessible
     final chatService = Get.find<ChatService>();
-    print('✅ ChatBinding: Found ChatService with ${chatService.suggestedQuestions.length} suggested questions');
+    print(
+      '✅ ChatBinding: Found ChatService with ${chatService.getSuggestedQuestions().length} suggested questions',
+    );
 
     // Initialize ChatController
     Get.lazyPut<ChatController>(() => ChatController());

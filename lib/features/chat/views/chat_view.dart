@@ -1,289 +1,492 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:thuoc_lo_ban_app/features/chat/models/conversation.dart';
 import '../controllers/chat_controller.dart';
 import 'widgets/chat_bubble.dart';
-import 'widgets/suggested_question_chip.dart';
 
-class ChatView extends StatelessWidget {
+class ChatView extends GetView<ChatController> {
   const ChatView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<ChatController>();
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF030D4C),
-      resizeToAvoidBottomInset: true,
-      appBar: _buildAppBar(controller),
-      body: SafeArea(
-        child: Obx(() {
-          if (!controller.isInitialized.value) {
-            return const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFFFFCD45),
+    return _ChatOrientationWrapper(
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Thiên Thước', style: TextStyle(color: Colors.white)),
+          centerTitle: true,
+          backgroundColor: const Color(0xFF030D4C),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Get.back(),
+            tooltip: 'Back',
+          ),
+          actions: [
+            Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.history, color: Colors.white),
+                onPressed: () {
+                  Scaffold.of(context).openDrawer();
+                },
+                tooltip: 'Lịch sử',
               ),
-            );
-          }
-
-          return Column(
+            ),
+            IconButton(
+              icon: const Icon(Icons.add, color: Colors.white),
+              onPressed: () => controller.startNewConversation(),
+              tooltip: 'Trò chuyện mới',
+            ),
+          ],
+        ),
+        drawer: _buildDrawer(context),
+        body: SafeArea(
+          bottom: true,
+          child: Column(
             children: [
-              Expanded(child: _buildChatContent(controller)),
-              _buildInputSection(controller),
+              Expanded(
+                child: Container(
+                  margin: EdgeInsets.only(top: 16.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 8.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(32.r),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Expanded(child: _buildChatList()),
+                      _buildSuggestedQuestions(),
+                      _buildInputField(),
+                    ],
+                  ),
+                ),
+              ),
             ],
-          );
-        }),
+          ),
+        ),
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar(ChatController controller) {
-    return AppBar(
-      backgroundColor: const Color(0xFF030D4C),
-      elevation: 0,
-      leading: IconButton(
-        onPressed: () => Get.back(),
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
-      ),
-      title: Row(
+  Widget _buildDrawer(BuildContext context) {
+    final appBarHeight = AppBar().preferredSize.height;
+
+    return Drawer(
+      backgroundColor: Colors.white,
+      child: Column(
         children: [
           Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFCD45), Color(0xFFFF8C45)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+            height: appBarHeight + MediaQuery.of(context).padding.top,
+            color: const Color(0xFF030D4C),
+            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
+                child: Text(
+                  'Lịch sử trò chuyện',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20.sp,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
-            child: const Icon(
-              Icons.psychology,
-              color: Color(0xFF030D4C),
-              size: 20,
-            ),
           ),
-          const SizedBox(width: 12),
+          Divider(color: Colors.grey[300], thickness: 1, height: 0),
+          SizedBox(height: 8.h),
           Expanded(
-            child: Text(
-              controller.conversationTitle,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
+            child: Obx(() {
+              final conversations = controller.conversationHistory;
+              return conversations.isEmpty
+                  ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          color: Colors.grey.withAlpha((0.6 * 255).round()),
+                          size: 48.sp,
+                        ),
+                        SizedBox(height: 16.h),
+                        Text(
+                          'Không có lịch sử trò chuyện',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 18.sp,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                  : _buildConversationList(conversations, context);
+            }),
           ),
+          SafeArea(child: Container()),
         ],
       ),
-      actions: [
-        // Menu button
-        PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert, color: Colors.white),
-          color: const Color(0xFF030D4C),
-          onSelected: (value) => _handleMenuAction(controller, value),
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              value: 'new_chat',
-              child: Row(
-                children: [
-                  Icon(Icons.add_comment, color: Color(0xFF00E8E8)),
-                  SizedBox(width: 12),
-                  Text('Cuộc trò chuyện mới', style: TextStyle(color: Colors.white)),
-                ],
-              ),
-            ),
-          ],
+    );
+  }
+
+  Widget _buildConversationList(
+    List<Conversation> conversations,
+    BuildContext context,
+  ) {
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      itemCount: conversations.length,
+      itemBuilder: (context, index) {
+        final conversation = conversations[index];
+        return _buildConversationTile(conversation, context);
+      },
+    );
+  }
+
+  Widget _buildConversationTile(
+    Conversation conversation,
+    BuildContext context,
+  ) {
+    return GestureDetector(
+      onLongPress: () {
+        _showDeleteMenu(context, conversation);
+      },
+      child: ListTile(
+        title: Text(
+          conversation.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 18.sp,
+            fontWeight: FontWeight.w500,
+            color: Colors.black,
+          ),
         ),
+        subtitle: Text(
+          _formatDate(conversation.updatedAt),
+          style: TextStyle(color: Colors.grey, fontSize: 12.sp),
+        ),
+        onTap: () {
+          controller.loadConversation(conversation.id);
+          Get.back();
+        },
+      ),
+    );
+  }
+
+  void _showDeleteMenu(BuildContext context, Conversation conversation) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.red,
+                ),
+                title: const Text('Xóa cuộc trò chuyện'),
+                onTap: () {
+                  Navigator.pop(context);
+                  controller.deleteConversation(conversation.id);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.cancel_outlined),
+                title: const Text('Huỷ'),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final dateTime = date.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dateToCheck = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+    if (dateToCheck == today) {
+      return 'Hôm nay, ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } else if (dateToCheck == today.subtract(const Duration(days: 1))) {
+      return 'Hôm qua, ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } else {
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+    }
+  }
+
+  Widget _buildEmptyState() {
+    return Column(
+      children: [
+        const Spacer(),
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/icons/thien_thuoc.png',
+                height: 100.w,
+                width: 100.w,
+                fit: BoxFit.contain,
+              ),
+              SizedBox(height: 16.h),
+              Text(
+                'Thiên Thước',
+                style: TextStyle(
+                  fontSize: 28.sp,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF030D4C),
+                ),
+              ),
+              SizedBox(height: 12.h),
+              Text(
+                'Hôm nay Thiên Thước\ncó thể giúp gì cho bạn?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  color: Colors.grey[700],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Spacer(),
       ],
     );
   }
 
-  Widget _buildChatContent(ChatController controller) {
+  Widget _buildChatList() {
     return Obx(() {
-      if (controller.showSuggestions.value && controller.currentMessages.isEmpty) {
-        return _buildEmptyState(controller);
+      if (controller.messages.isEmpty) {
+        return _buildEmptyState();
       }
 
       return ListView.builder(
         controller: controller.scrollController,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        itemCount: controller.currentMessages.length,
+        padding: EdgeInsets.zero,
+        itemCount: controller.messages.length,
         itemBuilder: (context, index) {
-          final message = controller.currentMessages[index];
+          final message = controller.messages[index];
           return ChatBubble(message: message);
         },
       );
     });
   }
 
-  Widget _buildEmptyState(ChatController controller) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 32), // Top spacing
-
-          // Welcome text
-          const Text(
-            'Chào bạn! Tôi là Thiên Thước',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
+  Widget _buildSuggestedQuestions() {
+    return Obx(() {
+      if (controller.suggestedQuestions.isEmpty) {
+        return const SizedBox.shrink();
+      }
+      return Container(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+        color: Colors.white,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.only(bottom: 12.h),
+              child: Text(
+                'Gợi ý cho bạn',
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
             ),
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 12),
-
-          Text(
-            'Tôi có thể giúp bạn hiểu về thước Lô Ban và tư vấn các kích thước hợp phong thủy.',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.8),
-              fontSize: 15,
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 24),
-
-          // Suggested questions
-          const Text(
-            'Câu hỏi gợi ý:',
-            style: TextStyle(
-              color: Color(0xFFFFCD45),
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Suggested questions list - always visible
-          Obx(() => SizedBox(
-            height: 120, // Fixed height to ensure visibility
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12.w,
+                mainAxisSpacing: 12.h,
+                childAspectRatio: (1.sw / 2 - 22.w) / (80.h),
+              ),
               itemCount: controller.suggestedQuestions.length,
               itemBuilder: (context, index) {
                 final question = controller.suggestedQuestions[index];
-                return Container(
-                  width: 240,
-                  margin: const EdgeInsets.only(right: 12),
-                  child: SuggestedQuestionChip(
-                    question: question,
-                    onTap: () => controller.onSuggestedQuestionTap(question),
+                return Card(
+                  elevation: 1,
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    side: BorderSide(color: Colors.grey.withAlpha((0.5 * 255).round())),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12.r),
+                    onTap: () => controller.useSuggestedQuestion(question.question),
+                    child: Padding(
+                      padding: EdgeInsets.all(12.r),
+                      child: Center(
+                        child: Text(
+                          question.question,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 15.sp,
+                            color: Colors.black,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
                   ),
                 );
               },
             ),
-          )),
-
-          const SizedBox(height: 32), // Bottom spacing
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    });
   }
 
-  Widget _buildInputSection(ChatController controller) {
+  Widget _buildInputField() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8), // Reduced padding
-      decoration: BoxDecoration(
-        color: const Color(0xFF030D4C),
-        border: Border(
-          top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.1),
-            width: 1,
-          ),
-        ),
-      ),
+      color: Colors.white,
+      padding: const EdgeInsets.all(8.0),
       child: Row(
         children: [
           Expanded(
             child: Container(
-              constraints: const BoxConstraints(
-                minHeight: 40, // Ensure minimum height for input field
-                maxHeight: 100, // Limit max height to prevent expansion
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 12), // Reduced padding
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(22), // Slightly reduced
-                border: Border.all(
-                  color: const Color(0xFF00E8E8).withValues(alpha: 0.3),
-                  width: 1,
-                ),
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(24.r),
               ),
-              child: TextField(
-                controller: controller.messageController,
-                style: const TextStyle(color: Colors.white),
-                maxLines: null,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => controller.sendMessage(),
-                decoration: const InputDecoration(
-                  hintText: 'Hỏi về thước Lô Ban...',
-                  hintStyle: TextStyle(
-                    color: Color(0xFFBBBBBB),
-                    fontSize: 15,
+              child: Obx(
+                () => TextField(
+                  textCapitalization: TextCapitalization.sentences,
+                  controller: controller.messageController,
+                  focusNode: controller.messageFocusNode,
+                  maxLines: 5,
+                  minLines: 1,
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 18.sp,
                   ),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 10), // Reduced padding
+                  autofocus: !controller.hasInitialMessage.value,
+                  textInputAction: TextInputAction.newline,
+                  decoration: InputDecoration(
+                    hintText: 'Hỏi Thiên Thước...',
+                    hintStyle: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 18.sp,
+                    ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16.w,
+                      vertical: 12.h,
+                    ),
+                    isCollapsed: true,
+                  ),
+                  onSubmitted: (_) {
+                    if (controller.messageController.text.trim().isNotEmpty) {
+                      controller.sendMessage();
+                    }
+                  },
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 10), // Reduced spacing
-          Obx(() => GestureDetector(
-            onTap: controller.canSendMessage ? () => controller.sendMessage() : null,
-            child: Container(
-              width: 44, // Slightly smaller
-              height: 44, // Slightly smaller
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: controller.canSendMessage
-                    ? const LinearGradient(
-                        colors: [Color(0xFF00E8E8), Color(0xFF00B8B8)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                color: controller.canSendMessage ? null : Colors.grey,
+          SizedBox(width: 8.w),
+          Obx(
+            () => Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(24.r),
+                onTap: controller.messageText.value.trim().isEmpty || controller.isLoading.value
+                    ? null
+                    : controller.sendMessage,
+                child: Container(
+                  width: 48.w,
+                  height: 48.w,
+                  decoration: BoxDecoration(
+                    color: controller.messageText.value.trim().isEmpty ? Colors.grey : const Color(0xFF030D4C),
+                    shape: BoxShape.circle,
+                  ),
+                  child: controller.isLoading.value
+                      ? const Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          ),
+                        )
+                      : Icon(
+                          Icons.send,
+                          size: 24.sp,
+                          color: Colors.white,
+                        ),
+                ),
               ),
-              child: controller.isLoading.value
-                  ? const SizedBox(
-                      width: 18, // Slightly smaller
-                      height: 18, // Slightly smaller
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(
-                      Icons.send,
-                      color: Colors.white,
-                      size: 18, // Slightly smaller
-                    ),
             ),
-          )),
+          ),
         ],
       ),
     );
   }
 
+}
 
-  void _handleMenuAction(ChatController controller, String action) {
-    switch (action) {
-      case 'new_chat':
-        controller.startNewConversation();
-        break;
-    }
+class _ChatOrientationWrapper extends StatefulWidget {
+  final Widget child;
+
+  const _ChatOrientationWrapper({
+    required this.child,
+  });
+
+  @override
+  State<_ChatOrientationWrapper> createState() =>
+      _ChatOrientationWrapperState();
+}
+
+class _ChatOrientationWrapperState extends State<_ChatOrientationWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    _setPortraitOrientation();
   }
 
+  @override
+  void dispose() {
+    _restoreLandscapeOrientation();
+    super.dispose();
+  }
 
+  void _setPortraitOrientation() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
+
+  void _restoreLandscapeOrientation() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
+  }
 }
