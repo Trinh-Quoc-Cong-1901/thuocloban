@@ -287,72 +287,84 @@ class ChatView extends GetView<ChatController> {
 
   Widget _buildSuggestedQuestions() {
     return Obx(() {
-      if (controller.suggestedQuestions.isEmpty) {
+      // Ẩn suggested questions nếu không có questions hoặc đã có messages
+      if (controller.suggestedQuestions.isEmpty || controller.messages.isNotEmpty) {
         return const SizedBox.shrink();
       }
+
+      // Layout horizontal scroll như thansohoc
       return Container(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-        color: Colors.white,
+        height: 100.h, // Tăng height để chứa đủ 2 dòng text
+        padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+        color: Colors.transparent, // Remove debug background
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: EdgeInsets.only(bottom: 12.h),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 2.h),
               child: Text(
                 'Gợi ý cho bạn',
                 style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
                 ),
               ),
             ),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12.w,
-                mainAxisSpacing: 12.h,
-                childAspectRatio: (1.sw / 2 - 22.w) / (80.h),
-              ),
-              itemCount: controller.suggestedQuestions.length,
-              itemBuilder: (context, index) {
-                final question = controller.suggestedQuestions[index];
-                return Card(
-                  elevation: 1,
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                    side: BorderSide(color: Colors.grey.withAlpha((0.5 * 255).round())),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12.r),
-                    onTap: () => controller.useSuggestedQuestion(question.question),
-                    child: Padding(
-                      padding: EdgeInsets.all(12.r),
-                      child: Center(
-                        child: Text(
-                          question.question,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 15.sp,
-                            color: Colors.black,
+            Expanded(
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: controller.suggestedQuestions.length,
+                itemBuilder: (context, index) {
+                  final question = controller.suggestedQuestions[index];
+                  return Container(
+                    margin: EdgeInsets.only(
+                      left: index == 0 ? 12.w : 4.w,
+                      right: index == controller.suggestedQuestions.length - 1 ? 12.w : 8.w,
+                    ),
+                    width: 160.w, // Giảm width để tránh overflow
+                    child: Card(
+                      elevation: 2,
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.r),
+                        side: BorderSide(
+                          color: const Color(0xFF030D4C).withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16.r),
+                        onTap: () => controller.useSuggestedQuestion(question.question),
+                        child: Container(
+                          padding: EdgeInsets.all(8.r),
+                          child: Center(
+                            child: Text(
+                              question.question,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500,
+                                height: 1.3, // Tăng line height để text 2 dòng dễ đọc hơn
+                              ),
+                              maxLines: 2, // Đảm bảo hiển thị đúng 2 dòng
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ],
         ),
       );
     });
   }
+
 
   Widget _buildInputField() {
     return Container(

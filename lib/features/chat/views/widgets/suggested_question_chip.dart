@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../models/suggested_question.dart';
 
 class SuggestedQuestionChip extends StatelessWidget {
@@ -17,28 +18,19 @@ class SuggestedQuestionChip extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         child: Container(
-          width: double.infinity,
-          height: double.infinity, // Fill the container height
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [
-                Color(0xFF030D4C),
-                Color(0xFF0A1B5C),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16.r),
             border: Border.all(
-              color: const Color(0xFF00E8E8).withValues(alpha: 0.4),
+              color: _getBorderColor(),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF00E8E8).withValues(alpha: 0.15),
+                color: _getBorderColor().withValues(alpha: 0.15),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -46,36 +38,58 @@ class SuggestedQuestionChip extends StatelessWidget {
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    _getCategoryIcon(question.category),
-                    size: 18,
-                    color: const Color(0xFF00E8E8),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      question.question,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        height: 1.3,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 3, // Allow more lines for better readability
-                    ),
-                  ),
-                ],
+              Icon(
+                _getCategoryIcon(question.category),
+                size: 20.sp,
+                color: _getIconColor(),
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                question.question,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _getTextColor(),
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
+                  height: 1.3,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Color _getBorderColor() {
+    switch (question.category) {
+      case QuestionCategory.thuocLoBan:
+        return const Color(0xFF030D4C);
+      case QuestionCategory.phongThuy:
+        return Colors.green;
+      case QuestionCategory.doLuong:
+        return Colors.blue;
+      case QuestionCategory.kienTruc:
+        return Colors.orange;
+      case QuestionCategory.noiThat:
+        return Colors.purple;
+      case QuestionCategory.congCu:
+        return Colors.teal;
+      case QuestionCategory.tongQuat:
+        return Colors.grey;
+    }
+  }
+
+  Color _getTextColor() {
+    return _getBorderColor();
+  }
+
+  Color _getIconColor() {
+    return _getBorderColor();
   }
 
   IconData _getCategoryIcon(QuestionCategory category) {

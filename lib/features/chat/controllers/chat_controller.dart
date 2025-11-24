@@ -52,8 +52,8 @@ class ChatController extends GetxController {
   void onInit() {
     super.onInit();
 
-    // Wait for ChatService to be ready before loading data
-    _initializeWithChatService();
+    // Initialize controller properly with async/await
+    _initializeController();
 
     // Listen to text changes
     messageController.addListener(() {
@@ -66,7 +66,7 @@ class ChatController extends GetxController {
           args['context'] != null &&
           args['autoSend'] == true) {
         String initialMessage = args['initialMessage'] as String;
-        
+
         // Convert context to a string format to be sent
         final contextData = args['context'] as Map<String, dynamic>;
         String contextInfo = """
@@ -88,7 +88,7 @@ Hãy giải thích chi tiết về kết quả này và đưa ra lời khuyên p
         messageController.text = '';
       } else if (args['initialMessage'] != null) {
         String prompt = args['initialMessage'] as String;
-        hasInitialMessage.value = true; 
+        hasInitialMessage.value = true;
 
         if (args['autoSend'] == true) {
           Future.delayed(const Duration(milliseconds: 100), () {
@@ -104,9 +104,61 @@ Hãy giải thích chi tiết về kết quả này và đưa ra lời khuyên p
     }
   }
 
+  Future<void> _initializeController() async {
+    try {
+      LoggerUtils.debug('ChatController: Starting initialization');
+
+      // Wait for ChatService to be ready before loading data
+      await _initializeWithChatService();
+
+      LoggerUtils.debug('ChatController: ChatService initialized, now loading suggested questions');
+
+      // Only load suggested questions after ChatService is ready
+      _loadSuggestedQuestions();
+
+      LoggerUtils.debug('ChatController: Initialization completed');
+    } catch (e) {
+      LoggerUtils.error('ChatController: Error during initialization', e);
+
+      // Fallback: load hardcoded questions if service initialization fails
+      _loadHardcodedQuestions();
+    }
+  }
+
+  void _loadHardcodedQuestions() {
+    // Fallback hardcode questions for when service is not ready
+    final debugQuestions = [
+      SuggestedQuestion(
+        id: '1',
+        question: 'Thước Lô Ban là gì?',
+        category: QuestionCategory.tongQuat,
+      ),
+      SuggestedQuestion(
+        id: '2',
+        question: 'Cách sử dụng thước Lô Ban cho cửa chính?',
+        category: QuestionCategory.congCu,
+      ),
+      SuggestedQuestion(
+        id: '3',
+        question: 'Kích thước giường ngủ hợp phong thủy?',
+        category: QuestionCategory.phongThuy,
+      ),
+      SuggestedQuestion(
+        id: '4',
+        question: 'Xem kích thước 81cm có tốt không?',
+        category: QuestionCategory.doLuong,
+      ),
+    ];
+
+    LoggerUtils.debug('ChatController: Loading hardcoded fallback questions');
+    suggestedQuestions.assignAll(debugQuestions);
+  }
+
   Future<void> _initializeWithChatService() async {
     try {
-      Get.find<ChatService>();
+      final chatService = Get.find<ChatService>();
+      // Đảm bảo ChatService đã hoàn thành khởi tạo database
+      await chatService.init();
       _loadAvailableModels();
       _loadSuggestedQuestions();
       await _loadConversationHistory();
@@ -148,12 +200,31 @@ Hãy giải thích chi tiết về kết quả này và đưa ra lời khuyên p
   }
 
   void _loadSuggestedQuestions() {
-    final allQuestions = _chatService.getSuggestedQuestions();
-    if (allQuestions.isEmpty) {
-      suggestedQuestions.clear();
-      return;
+    try {
+      LoggerUtils.debug('ChatController: Loading suggested questions from ChatService');
+
+      final allQuestions = _chatService.getSuggestedQuestions();
+
+      if (allQuestions.isEmpty) {
+        LoggerUtils.debug('ChatController: No questions found in ChatService, using fallback');
+        _loadHardcodedQuestions();
+        return;
+      }
+
+      LoggerUtils.debug('ChatController: Found ${allQuestions.length} questions in ChatService');
+
+      // Shuffle để random hóa câu hỏi và chỉ lấy 4 câu đầu
+      final shuffledQuestions = List<SuggestedQuestion>.from(allQuestions);
+      shuffledQuestions.shuffle();
+      final selectedQuestions = shuffledQuestions.take(4).toList();
+
+      suggestedQuestions.assignAll(selectedQuestions);
+      LoggerUtils.debug('ChatController: Successfully loaded ${selectedQuestions.length} suggested questions');
+    } catch (e) {
+      LoggerUtils.error('ChatController: Error loading suggested questions from service', e);
+      // Fallback to hardcoded questions if service fails
+      _loadHardcodedQuestions();
     }
-    suggestedQuestions.assignAll(allQuestions.take(6));
   }
 
   Future<void> sendMessage({String? text}) async {

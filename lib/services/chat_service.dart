@@ -15,7 +15,12 @@ class ChatService extends GetxService {
   void onInit() {
     super.onInit();
     LoggerUtils.debug('ChatService initialized');
-    // Don't call init() here - it will be called asynchronously
+    // Initialize database and suggested questions asynchronously
+    init().then((_) {
+      LoggerUtils.debug('ChatService database initialized successfully');
+    }).catchError((error) {
+      LoggerUtils.error('Failed to initialize ChatService database', error);
+    });
   }
 
   @override
@@ -147,6 +152,8 @@ class ChatService extends GetxService {
 
   // Initialize default suggested questions
   Future<void> _initializeSuggestedQuestions() async {
+    LoggerUtils.debug('ChatService: Initializing default suggested questions');
+
     final List<SuggestedQuestion> questions = [
       SuggestedQuestion(
         id: _uuid.v4(),
@@ -170,12 +177,20 @@ class ChatService extends GetxService {
       ),
     ];
 
+    LoggerUtils.debug('ChatService: Created ${questions.length} default questions');
+
     // Save to database
-    await _databaseProvider.putJsonList(
-      _suggestedQuestionsBoxName,
-      'questions',
-      questions.map((q) => q.toJson()).toList(),
-    );
+    try {
+      await _databaseProvider.putJsonList(
+        _suggestedQuestionsBoxName,
+        'questions',
+        questions.map((q) => q.toJson()).toList(),
+      );
+      LoggerUtils.debug('ChatService: Successfully saved suggested questions to database');
+    } catch (e) {
+      LoggerUtils.error('ChatService: Failed to save suggested questions', e);
+      throw e;
+    }
   }
 
   QuestionCategory _categoryFromName(String categoryName) {
@@ -187,19 +202,30 @@ class ChatService extends GetxService {
 
   // Get suggested questions
   List<SuggestedQuestion> getSuggestedQuestions({String? category}) {
+    LoggerUtils.debug('ChatService: Getting suggested questions, category: $category');
+
     final jsonList = _databaseProvider.getJsonList(
       _suggestedQuestionsBoxName,
       'questions',
     );
-    if (jsonList == null) return [];
+
+    if (jsonList == null) {
+      LoggerUtils.debug('ChatService: No questions found in database');
+      return [];
+    }
+
+    LoggerUtils.debug('ChatService: Found ${jsonList.length} questions in database');
 
     final allQuestions =
         jsonList.map((json) => SuggestedQuestion.fromJson(json)).toList();
 
     if (category != null) {
-      return allQuestions.where((q) => q.category.name == category).toList();
+      final filtered = allQuestions.where((q) => q.category.name == category).toList();
+      LoggerUtils.debug('ChatService: Filtered to ${filtered.length} questions for category: $category');
+      return filtered;
     }
 
+    LoggerUtils.debug('ChatService: Returning ${allQuestions.length} questions');
     return allQuestions;
   }
 
