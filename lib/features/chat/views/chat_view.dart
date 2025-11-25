@@ -241,7 +241,7 @@ class ChatView extends GetView<ChatController> {
                 width: 100.w,
                 fit: BoxFit.contain,
               ),
-              SizedBox(height: 16.h),
+              SizedBox(height: 8.h),
               Text(
                 'Thiên Thước',
                 style: TextStyle(
@@ -250,7 +250,7 @@ class ChatView extends GetView<ChatController> {
                   color: const Color(0xFF030D4C),
                 ),
               ),
-              SizedBox(height: 12.h),
+              SizedBox(height: 6.h),
               Text(
                 'Hôm nay Thiên Thước\ncó thể giúp gì cho bạn?',
                 textAlign: TextAlign.center,
@@ -286,72 +286,106 @@ class ChatView extends GetView<ChatController> {
   }
 
   Widget _buildSuggestedQuestions() {
-    return Obx(() {
-      if (controller.suggestedQuestions.isEmpty) {
-        return const SizedBox.shrink();
-      }
-      return Container(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-        color: Colors.white,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.only(bottom: 12.h),
-              child: Text(
-                'Gợi ý cho bạn',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+    return RepaintBoundary(
+      child: Obx(() {
+        final shouldShow = controller.shouldShowSuggestedQuestions();
+        final questions = controller.suggestedQuestions;
+        final hasMessages = controller.messages.isNotEmpty;
+        final isLoading = controller.isLoading.value;
+
+        // Debug logging
+        debugPrint('_buildSuggestedQuestions: shouldShow=$shouldShow, ${questions.length} questions, hasMessages=$hasMessages, isLoading=$isLoading');
+
+        // Sử dụng method từ controller để quyết định hiển thị
+        if (!shouldShow) {
+          debugPrint('Hide suggested questions - shouldShow: $shouldShow');
+          return const SizedBox.shrink();
+        }
+
+        return Container(
+          key: const ValueKey('suggested_questions_container'),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+          color: Colors.white,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(bottom: 12.h),
+                child: Text(
+                  'Gợi ý cho bạn',
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
                 ),
               ),
-            ),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12.w,
-                mainAxisSpacing: 12.h,
-                childAspectRatio: (1.sw / 2 - 22.w) / (80.h),
-              ),
-              itemCount: controller.suggestedQuestions.length,
-              itemBuilder: (context, index) {
-                final question = controller.suggestedQuestions[index];
-                return Card(
-                  elevation: 1,
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                    side: BorderSide(color: Colors.grey.withAlpha((0.5 * 255).round())),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12.r),
-                    onTap: () => controller.useSuggestedQuestion(question.question),
-                    child: Padding(
-                      padding: EdgeInsets.all(12.r),
-                      child: Center(
-                        child: Text(
-                          question.question,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 15.sp,
-                            color: Colors.black,
+              SizedBox(
+                height: 70.h, // Fixed height that accommodates 2 lines reliably
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.zero,
+                  physics: const ClampingScrollPhysics(),
+                  itemCount: questions.length,
+                  itemBuilder: (context, index) {
+                    final question = questions[index];
+                    if (question.question.isEmpty) return const SizedBox.shrink();
+
+                    return Container(
+                      key: ValueKey('question_${index}_${question.question.hashCode}'),
+                      width: 200.w,
+                      margin: EdgeInsets.only(
+                        right: index < questions.length - 1 ? 12.w : 0,
+                      ),
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        elevation: 1,
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                          side: BorderSide(
+                            color: Colors.grey.withValues(alpha: 0.5),
                           ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12.r),
+                          onTap: () {
+                            try {
+                              controller.useSuggestedQuestion(question.question);
+                            } catch (e) {
+                              // Log error silently in production
+                              debugPrint('Error using suggested question: $e');
+                            }
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            height: double.infinity,
+                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                            child: Center(
+                              child: Text(
+                                question.question,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  color: Colors.black,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      );
-    });
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
   }
 
   Widget _buildInputField() {
@@ -467,7 +501,9 @@ class _ChatOrientationWrapperState extends State<_ChatOrientationWrapper> {
 
   @override
   void dispose() {
-    _restoreLandscapeOrientation();
+    if (mounted) {
+      _restoreLandscapeOrientation();
+    }
     super.dispose();
   }
 
@@ -479,10 +515,25 @@ class _ChatOrientationWrapperState extends State<_ChatOrientationWrapper> {
   }
 
   void _restoreLandscapeOrientation() {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    try {
+      print('💬 Chat dispose - Restoring to landscape for all devices');
+
+      // Main screen luôn landscape cho cả phone và tablet
+      // Nên khi thoát chat, restore về landscape cho tất cả
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+
+      print('📱 Restored landscape orientation for all devices');
+    } catch (e) {
+      print('⚠️ Error restoring orientation: $e');
+      // Fallback: restore landscape mode
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
   }
 
   @override

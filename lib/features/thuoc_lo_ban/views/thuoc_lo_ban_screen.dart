@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import '../../../config/assets_path.dart';
+import '../../../utils/device_utils.dart';
 import '../controllers/thuoc_lo_ban_controller.dart';
 import '../models/ruler_model.dart';
 // Removed haptic helper import - haptic feedback disabled
@@ -33,11 +34,28 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
   @override
   void initState() {
     super.initState();
-    _setLandscapeOrientation();
-    // Pre-calculate after first frame
+    // Set orientation after first frame when context is available
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setOrientationBasedOnDevice();
       _updateCachedDimensions();
     });
+  }
+
+  Future<void> _setOrientationBasedOnDevice() async {
+    final deviceInfo = DeviceUtils.getDeviceInfo(context);
+    print('🔍 Device Info: $deviceInfo');
+
+    // Cả phone và tablet đều cần xoay ngang khi vào app
+    if (DeviceUtils.isTablet(context)) {
+      print('📱 Detected TABLET - Setting landscape orientation');
+    } else {
+      print('📱 Detected PHONE - Setting landscape orientation');
+    }
+
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
   }
   
   void _updateCachedDimensions() {
@@ -46,12 +64,6 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
     _cachedPixelsPerMm = _cachedRulerAreaWidth / 100;
   }
   
-  Future<void> _setLandscapeOrientation() async {
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-  }
 
   @override
   void dispose() {
@@ -60,10 +72,14 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
   }
   
   Future<void> _restoreOrientation() async {
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    print('🔄 Main screen dispose - Keep landscape for all devices');
+
+    // Main screen luôn là landscape cho cả phone và tablet
+    // Không restore về portrait vì main screen mặc định landscape
+    // Khi user thoát app, app sẽ mở lại ở landscape mode (đúng behavior)
+
+    print('📱 Maintaining landscape mode for all devices');
+    // Không cần thay đổi orientation vì main screen luôn landscape
   }
   
 
@@ -821,7 +837,7 @@ class _ThuocLoBanScreenState extends State<ThuocLoBanScreen> {
                       controller.selectedUnit == Unit.mm ? 'cm' : 'inch',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 6.sp,  // Reduced from 12 to 8 for landscape
+                        fontSize: 5.sp,  // Reduced from 12 to 8 for landscape
                         fontWeight: FontWeight.bold  // Bold as requested
                       ),
                     ),
@@ -1340,6 +1356,8 @@ class RulerStripPainter extends CustomPainter {
   }
 }
   Future<void> _openChat({Map<String, dynamic>? arguments}) async {
+    print('💬 Opening chat - Setting portrait mode for all devices');
+    // Set portrait cho cả phone và tablet trước khi vào chat
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,

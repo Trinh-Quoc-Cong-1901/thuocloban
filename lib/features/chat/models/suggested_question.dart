@@ -46,7 +46,7 @@ class SuggestedQuestion extends Equatable {
       // Thước Lô Ban
       const SuggestedQuestion(
         id: 'q1',
-        question: 'Thước Lô Ban là gì và có tác dụng như thế nào?',
+        question: 'Thước Lỗ Ban là gì và có tác dụng như thế nào?',
         category: QuestionCategory.thuocLoBan,
       ),
       const SuggestedQuestion(
@@ -75,7 +75,7 @@ class SuggestedQuestion extends Equatable {
       // Đo lường
       const SuggestedQuestion(
         id: 'q6',
-        question: 'Cách đo giường ngủ theo thước Lô Ban?',
+        question: 'Cách đo giường ngủ theo thước Lỗ Ban?',
         category: QuestionCategory.doLuong,
       ),
       const SuggestedQuestion(
@@ -87,7 +87,7 @@ class SuggestedQuestion extends Equatable {
       // Kiến trúc
       const SuggestedQuestion(
         id: 'q8',
-        question: 'Thiết kế nhà theo thước Lô Ban có những lưu ý gì?',
+        question: 'Thiết kế nhà theo thước Lỗ Ban có những lưu ý gì?',
         category: QuestionCategory.kienTruc,
       ),
 
@@ -101,7 +101,7 @@ class SuggestedQuestion extends Equatable {
       // Tổng quát
       const SuggestedQuestion(
         id: 'q10',
-        question: 'Cách sử dụng app Thước Lô Ban hiệu quả nhất?',
+        question: 'Cách sử dụng app Thước Lỗ Ban hiệu quả nhất?',
         category: QuestionCategory.tongQuat,
       ),
     ];

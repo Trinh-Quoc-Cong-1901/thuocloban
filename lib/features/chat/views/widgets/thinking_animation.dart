@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ThinkingAnimation extends StatefulWidget {
   final String text;
@@ -65,7 +66,7 @@ class _ThinkingAnimationState extends State<ThinkingAnimation>
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -73,12 +74,12 @@ class _ThinkingAnimationState extends State<ThinkingAnimation>
             widget.text,
             style: TextStyle(
               color: widget.color,
-              fontSize: 14,
+              fontSize: 13.sp, // Tăng từ 14 lên 18.sp cho dễ đọc hơn
               fontStyle: FontStyle.italic,
             ),
           ),
 
-          const SizedBox(width: 10),
+          SizedBox(width: 10.w),
 
           _buildDots(),
         ],
@@ -94,12 +95,12 @@ class _ThinkingAnimationState extends State<ThinkingAnimation>
           animation: _dotAnimations[index],
           builder: (context, child) {
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
+              padding: EdgeInsets.symmetric(horizontal: 2.w),
               child: Opacity(
                 opacity: _dotAnimations[index].value,
                 child: Container(
-                  width: 6,
-                  height: 6,
+                  width: 8.w, // Tăng từ 6 lên 8.w để phù hợp với text lớn hơn
+                  height: 8.h, // Tăng từ 6 lên 8.h để phù hợp với text lớn hơn
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: widget.color,

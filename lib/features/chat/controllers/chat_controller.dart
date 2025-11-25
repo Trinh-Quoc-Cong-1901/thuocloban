@@ -52,6 +52,9 @@ class ChatController extends GetxController {
   void onInit() {
     super.onInit();
 
+    // Load fallback questions immediately to ensure UI shows suggestions
+    _loadFallbackSuggestedQuestions();
+
     // Wait for ChatService to be ready before loading data
     _initializeWithChatService();
 
@@ -108,6 +111,7 @@ Hãy giải thích chi tiết về kết quả này và đưa ra lời khuyên p
     try {
       Get.find<ChatService>();
       _loadAvailableModels();
+      // Load from service (might override fallback questions)
       _loadSuggestedQuestions();
       await _loadConversationHistory();
     } catch (e) {
@@ -149,11 +153,43 @@ Hãy giải thích chi tiết về kết quả này và đưa ra lời khuyên p
 
   void _loadSuggestedQuestions() {
     final allQuestions = _chatService.getSuggestedQuestions();
+
+    // Debug logging
+    LoggerUtils.debug('Service questions: ${allQuestions.length} found');
+    LoggerUtils.debug('Current questions: ${suggestedQuestions.length}');
+
     if (allQuestions.isEmpty) {
-      suggestedQuestions.clear();
+      // Only load fallback if we don't already have questions
+      if (suggestedQuestions.isEmpty) {
+        LoggerUtils.debug('No service questions, no current questions - loading fallback from model');
+        _loadFallbackSuggestedQuestions();
+      } else {
+        LoggerUtils.debug('No service questions, but keeping existing ${suggestedQuestions.length} questions');
+      }
       return;
     }
+
+    // Service has questions, use them (these now come from the same model source)
     suggestedQuestions.assignAll(allQuestions.take(6));
+    LoggerUtils.debug('Using ${suggestedQuestions.length} questions from service (sourced from model)');
+
+    // Log the actual questions being used
+    for (int i = 0; i < suggestedQuestions.length; i++) {
+      LoggerUtils.debug('Q${i + 1}: ${suggestedQuestions[i].question}');
+    }
+  }
+
+  void _loadFallbackSuggestedQuestions() {
+    final fallbackQuestions = SuggestedQuestion.getDefaultQuestions();
+
+    // Take first 6 questions
+    suggestedQuestions.assignAll(fallbackQuestions.take(6));
+    LoggerUtils.debug('Loaded ${suggestedQuestions.length} fallback questions:');
+
+    // Log each fallback question
+    for (int i = 0; i < suggestedQuestions.length; i++) {
+      LoggerUtils.debug('Fallback Q${i + 1}: ${suggestedQuestions[i].question}');
+    }
   }
 
   Future<void> sendMessage({String? text}) async {
@@ -247,6 +283,7 @@ Hãy giải thích chi tiết về kết quả này và đưa ra lời khuyên p
 
         await _loadConversationHistory();
         _loadSuggestedQuestions();
+        _clearSuggestedQuestionsIfNeeded();
       } catch (e) {
         LoggerUtils.error('Error sending message', e);
         final updatedMessages = messages.where((msg) => !msg.isLoading).toList();
@@ -364,6 +401,7 @@ Hãy giải thích chi tiết về kết quả này và đưa ra lời khuyên p
     messages.clear();
     _pendingContextInfo.value = null;
     hasInitialMessage.value = false;
+    // Chỉ load suggested questions khi thực sự chưa có messages nào
     _loadSuggestedQuestions();
   }
 
@@ -412,5 +450,21 @@ Hãy giải thích chi tiết về kết quả này và đưa ra lời khuyên p
     // For thuocloban, we can assume most questions are related.
     // This can be expanded with more sophisticated keyword checking if needed.
     return true;
+  }
+
+  /// Kiểm tra xem có nên hiển thị gợi ý hay không
+  bool shouldShowSuggestedQuestions() {
+    return messages.isEmpty &&
+           suggestedQuestions.isNotEmpty &&
+           !isLoading.value &&
+           !isTyping.value;
+  }
+
+  /// Clear suggested questions khi có messages
+  void _clearSuggestedQuestionsIfNeeded() {
+    if (messages.isNotEmpty && suggestedQuestions.isNotEmpty) {
+      LoggerUtils.debug('Clearing suggested questions - messages exist: ${messages.length}');
+      // Không clear questions, chỉ dựa vào logic hiển thị trong view
+    }
   }
 }

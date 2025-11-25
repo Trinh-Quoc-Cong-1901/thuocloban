@@ -113,7 +113,7 @@ class ChatService extends GetxService {
 
   // Version control for suggested questions
   static const int _suggestedQuestionsVersion =
-      2; // Tăng số này khi muốn update questions
+      3; // Updated to use questions from model instead of hardcoding
 
   // Singleton pattern
   static ChatService get to => Get.find<ChatService>();
@@ -145,30 +145,10 @@ class ChatService extends GetxService {
     return this;
   }
 
-  // Initialize default suggested questions
+  // Initialize default suggested questions from model
   Future<void> _initializeSuggestedQuestions() async {
-    final List<SuggestedQuestion> questions = [
-      SuggestedQuestion(
-        id: _uuid.v4(),
-        question: 'Thước Lô Ban là gì?',
-        category: QuestionCategory.tongQuat,
-      ),
-      SuggestedQuestion(
-        id: _uuid.v4(),
-        question: 'Cách sử dụng thước Lô Ban cho cửa chính?',
-        category: QuestionCategory.congCu,
-      ),
-      SuggestedQuestion(
-        id: _uuid.v4(),
-        question: 'Kích thước giường ngủ hợp phong thủy?',
-        category: QuestionCategory.phongThuy,
-      ),
-      SuggestedQuestion(
-        id: _uuid.v4(),
-        question: 'Xem giúp tôi kích thước 81cm',
-        category: QuestionCategory.congCu,
-      ),
-    ];
+    // Use questions from SuggestedQuestion model instead of hardcoding here
+    final questions = SuggestedQuestion.getDefaultQuestions();
 
     // Save to database
     await _databaseProvider.putJsonList(
