@@ -24,13 +24,14 @@ class ChatView extends GetView<ChatController> {
           ),
           actions: [
             Builder(
-              builder: (context) => IconButton(
-                icon: const Icon(Icons.history, color: Colors.white),
-                onPressed: () {
-                  Scaffold.of(context).openDrawer();
-                },
-                tooltip: 'Lịch sử',
-              ),
+              builder:
+                  (context) => IconButton(
+                    icon: const Icon(Icons.history, color: Colors.white),
+                    onPressed: () {
+                      Scaffold.of(context).openDrawer();
+                    },
+                    tooltip: 'Lịch sử',
+                  ),
             ),
             IconButton(
               icon: const Icon(Icons.add, color: Colors.white),
@@ -77,6 +78,7 @@ class ChatView extends GetView<ChatController> {
     final appBarHeight = AppBar().preferredSize.height;
 
     return Drawer(
+      width: 300.w,
       backgroundColor: Colors.white,
       child: Column(
         children: [
@@ -117,10 +119,7 @@ class ChatView extends GetView<ChatController> {
                         SizedBox(height: 16.h),
                         Text(
                           'Không có lịch sử trò chuyện',
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 18.sp,
-                          ),
+                          style: TextStyle(color: Colors.grey, fontSize: 18.sp),
                         ),
                       ],
                     ),
@@ -159,7 +158,7 @@ class ChatView extends GetView<ChatController> {
       child: ListTile(
         title: Text(
           conversation.title,
-          maxLines: 1,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: 18.sp,
@@ -188,10 +187,7 @@ class ChatView extends GetView<ChatController> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(
-                  Icons.delete_outline,
-                  color: Colors.red,
-                ),
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
                 title: const Text('Xóa cuộc trò chuyện'),
                 onTap: () {
                   Navigator.pop(context);
@@ -254,10 +250,7 @@ class ChatView extends GetView<ChatController> {
               Text(
                 'Hôm nay Thiên Thước\ncó thể giúp gì cho bạn?',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  color: Colors.grey[700],
-                ),
+                style: TextStyle(fontSize: 18.sp, color: Colors.grey[700]),
               ),
             ],
           ),
@@ -294,7 +287,9 @@ class ChatView extends GetView<ChatController> {
         final isLoading = controller.isLoading.value;
 
         // Debug logging
-        debugPrint('_buildSuggestedQuestions: shouldShow=$shouldShow, ${questions.length} questions, hasMessages=$hasMessages, isLoading=$isLoading');
+        debugPrint(
+          '_buildSuggestedQuestions: shouldShow=$shouldShow, ${questions.length} questions, hasMessages=$hasMessages, isLoading=$isLoading',
+        );
 
         // Sử dụng method từ controller để quyết định hiển thị
         if (!shouldShow) {
@@ -329,10 +324,13 @@ class ChatView extends GetView<ChatController> {
                   itemCount: questions.length,
                   itemBuilder: (context, index) {
                     final question = questions[index];
-                    if (question.question.isEmpty) return const SizedBox.shrink();
+                    if (question.question.isEmpty)
+                      return const SizedBox.shrink();
 
                     return Container(
-                      key: ValueKey('question_${index}_${question.question.hashCode}'),
+                      key: ValueKey(
+                        'question_${index}_${question.question.hashCode}',
+                      ),
                       width: 200.w,
                       margin: EdgeInsets.only(
                         right: index < questions.length - 1 ? 12.w : 0,
@@ -351,7 +349,9 @@ class ChatView extends GetView<ChatController> {
                           borderRadius: BorderRadius.circular(12.r),
                           onTap: () {
                             try {
-                              controller.useSuggestedQuestion(question.question);
+                              controller.useSuggestedQuestion(
+                                question.question,
+                              );
                             } catch (e) {
                               // Log error silently in production
                               debugPrint('Error using suggested question: $e');
@@ -360,7 +360,10 @@ class ChatView extends GetView<ChatController> {
                           child: Container(
                             width: double.infinity,
                             height: double.infinity,
-                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12.w,
+                              vertical: 4.h,
+                            ),
                             child: Center(
                               child: Text(
                                 question.question,
@@ -407,18 +410,12 @@ class ChatView extends GetView<ChatController> {
                   focusNode: controller.messageFocusNode,
                   maxLines: 5,
                   minLines: 1,
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 18.sp,
-                  ),
+                  style: TextStyle(color: Colors.black, fontSize: 18.sp),
                   autofocus: !controller.hasInitialMessage.value,
                   textInputAction: TextInputAction.newline,
                   decoration: InputDecoration(
                     hintText: 'Hỏi Thiên Thước...',
-                    hintStyle: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 18.sp,
-                    ),
+                    hintStyle: TextStyle(color: Colors.grey, fontSize: 18.sp),
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
@@ -443,32 +440,36 @@ class ChatView extends GetView<ChatController> {
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(24.r),
-                onTap: controller.messageText.value.trim().isEmpty || controller.isLoading.value
-                    ? null
-                    : controller.sendMessage,
+                onTap:
+                    controller.messageText.value.trim().isEmpty ||
+                            controller.isLoading.value
+                        ? null
+                        : controller.sendMessage,
                 child: Container(
                   width: 48.w,
                   height: 48.w,
                   decoration: BoxDecoration(
-                    color: controller.messageText.value.trim().isEmpty ? Colors.grey : const Color(0xFF030D4C),
+                    color:
+                        controller.messageText.value.trim().isEmpty
+                            ? Colors.grey
+                            : const Color(0xFF030D4C),
                     shape: BoxShape.circle,
                   ),
-                  child: controller.isLoading.value
-                      ? const Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  child:
+                      controller.isLoading.value
+                          ? const Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
                             ),
-                          ),
-                        )
-                      : Icon(
-                          Icons.send,
-                          size: 24.sp,
-                          color: Colors.white,
-                        ),
+                          )
+                          : Icon(Icons.send, size: 24.sp, color: Colors.white),
                 ),
               ),
             ),
@@ -477,15 +478,12 @@ class ChatView extends GetView<ChatController> {
       ),
     );
   }
-
 }
 
 class _ChatOrientationWrapper extends StatefulWidget {
   final Widget child;
 
-  const _ChatOrientationWrapper({
-    required this.child,
-  });
+  const _ChatOrientationWrapper({required this.child});
 
   @override
   State<_ChatOrientationWrapper> createState() =>

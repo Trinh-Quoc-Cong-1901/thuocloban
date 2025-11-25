@@ -27,9 +27,14 @@ class ChatBubble extends StatelessWidget {
               _buildAvatar(isUser),
               SizedBox(width: 16.w),
               Expanded(
-                child: message.isLoading
-                    ? const ThinkingAnimation()
-                    : _buildMessageContent(message.content, isUser, context),
+                child:
+                    message.isLoading
+                        ? const ThinkingAnimation()
+                        : _buildMessageContent(
+                          message.content,
+                          isUser,
+                          context,
+                        ),
               ),
             ],
           ),
@@ -48,24 +53,25 @@ class ChatBubble extends StatelessWidget {
         shape: BoxShape.circle,
         color: isUser ? Colors.blue : const Color.fromARGB(255, 255, 255, 227),
       ),
-      child: isUser
-        ? Icon(
-            Icons.person,
-            color: Colors.white,
-            size: 18.sp,
-          )
-        : ClipOval(
-            child: Image.asset(
-              'assets/icons/thien_thuoc.png',
-              width: 32.w,
-              height: 32.w,
-              fit: BoxFit.cover,
-            ),
-          ),
+      child:
+          isUser
+              ? Icon(Icons.person, color: Colors.white, size: 18.sp)
+              : ClipOval(
+                child: Image.asset(
+                  'assets/icons/thien_thuoc.png',
+                  width: 32.w,
+                  height: 32.w,
+                  fit: BoxFit.cover,
+                ),
+              ),
     );
   }
 
-  Widget _buildMessageContent(String content, bool isUser, BuildContext context) {
+  Widget _buildMessageContent(
+    String content,
+    bool isUser,
+    BuildContext context,
+  ) {
     final baseStyle = TextStyle(
       fontSize: 16.sp,
       color: Colors.black,
@@ -73,10 +79,7 @@ class ChatBubble extends StatelessWidget {
     );
 
     if (isUser) {
-      return SelectableText(
-        content,
-        style: baseStyle,
-      );
+      return SelectableText(content, style: baseStyle);
     }
 
     return MarkdownBody(
@@ -99,26 +102,16 @@ class ChatBubble extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.grey[200],
             borderRadius: BorderRadius.circular(4.r),
-            border: Border.all(
-              color: Colors.grey.withOpacity(0.3),
-              width: 0.5,
-            ),
+            border: Border.all(color: Colors.grey.withOpacity(0.3), width: 0.5),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.copy_outlined,
-                size: 14.sp,
-                color: Colors.grey[700],
-              ),
+              Icon(Icons.copy_outlined, size: 14.sp, color: Colors.grey[700]),
               SizedBox(width: 6.w),
               Text(
                 'Sao chép',
-                style: TextStyle(
-                  fontSize: 12.sp,
-                  color: Colors.grey[700],
-                ),
+                style: TextStyle(fontSize: 12.sp, color: Colors.grey[700]),
               ),
             ],
           ),

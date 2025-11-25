@@ -38,11 +38,12 @@ class _ThinkingAnimationState extends State<ThinkingAnimation>
       );
     });
 
-    _dotAnimations = _dotControllers.map((controller) {
-      return Tween<double>(begin: 0.4, end: 1.0).animate(
-        CurvedAnimation(parent: controller, curve: Curves.easeInOut),
-      );
-    }).toList();
+    _dotAnimations =
+        _dotControllers.map((controller) {
+          return Tween<double>(begin: 0.4, end: 1.0).animate(
+            CurvedAnimation(parent: controller, curve: Curves.easeInOut),
+          );
+        }).toList();
 
     // Start animations with delays
     for (int i = 0; i < _dotControllers.length; i++) {
@@ -66,7 +67,7 @@ class _ThinkingAnimationState extends State<ThinkingAnimation>
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
